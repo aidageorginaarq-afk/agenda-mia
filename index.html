@@ -11,24 +11,51 @@
   <title>Agenda - Bitácora</title>
 
   <!-- ICONOS PARA LA APP (Jacaranda Style) -->
-  <!-- Estos íconos son los que leerá tu Samsung o tu compu al instalarla -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%239B5DE5%22/><path d=%22M50 20 C60 40 85 45 85 70 C85 95 60 100 50 80 C40 100 15 95 15 70 C15 45 40 40 50 20 Z%22 fill=%22white%22/></svg>">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%239B5DE5%22/><path d=%22M50 20 C60 40 85 45 85 70 C85 95 60 100 50 80 C40 100 15 95 15 70 C15 45 40 40 50 20 Z%22 fill=%22white%22/></svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%239B5DE5'/%3E%3Cpath d='M50 20 C60 40 85 45 85 70 C85 95 60 100 50 80 C40 100 15 95 15 70 C15 45 40 40 50 20 Z' fill='white'/%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%239B5DE5'/%3E%3Cpath d='M50 20 C60 40 85 45 85 70 C85 95 60 100 50 80 C40 100 15 95 15 70 C15 45 40 40 50 20 Z' fill='white'/%3E%3C/svg%3E">
   
-  <!-- MANIFEST: Le dice a tu tableta "Oye, soy una app instalable" -->
-  <link rel="manifest" href='data:application/manifest+json,{
-    "name": "Agenda Bitácora Docente",
-    "short_name": "Bitácora",
-    "start_url": ".",
-    "display": "standalone",
-    "background_color": "#FCF8FF",
-    "theme_color": "#9B5DE5",
-    "icons": [{
-      "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%239B5DE5%22/><path d=%22M50 20 C60 40 85 45 85 70 C85 95 60 100 50 80 C40 100 15 95 15 70 C15 45 40 40 50 20 Z%22 fill=%22white%22/></svg>",
-      "sizes": "192x192",
-      "type": "image/svg+xml"
-    }]
-  }' />
+  <!-- MANIFEST: Link vacío, se llenará con JS para evitar errores de comillas -->
+  <link id="manifest-link" rel="manifest" href="">
+
+  <!-- SCRIPT PARA CONVERTIR LA WEB EN APP INSTALABLE (PWA) -->
+  <script>
+    // 1. Creamos el archivo Manifest dinámicamente
+    const manifest = {
+      name: "Agenda Bitácora Docente",
+      short_name: "Bitácora",
+      start_url: window.location.pathname,
+      display: "standalone",
+      background_color: "#FCF8FF",
+      theme_color: "#9B5DE5",
+      icons: [{
+        src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%239B5DE5'/%3E%3Cpath d='M50 20 C60 40 85 45 85 70 C85 95 60 100 50 80 C40 100 15 95 15 70 C15 45 40 40 50 20 Z' fill='white'/%3E%3C/svg%3E",
+        sizes: "192x192 512x512",
+        type: "image/svg+xml",
+        purpose: "any maskable"
+      }]
+    };
+    const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+    document.getElementById('manifest-link').href = URL.createObjectURL(manifestBlob);
+
+    // 2. Creamos y registramos un Service Worker "ficticio" (Requisito estricto de Android)
+    const swCode = `
+      self.addEventListener('install', (e) => { self.skipWaiting(); });
+      self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
+      self.addEventListener('fetch', (e) => { 
+        // No hacemos nada complejo, solo cumplimos el requisito de tener evento fetch
+      });
+    `;
+    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(swBlob);
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register(swUrl).then(() => {
+          console.log('App lista para instalarse');
+        }).catch((err) => console.log('SW Error:', err));
+      });
+    }
+  </script>
 
   <!-- Import Map para evitar el error #31 (React Duplicado) -->
   <script type="importmap">
