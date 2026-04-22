@@ -6,6 +6,17 @@
   <meta name="theme-color" content="#FCF8FF">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Agenda - Bitácora</title>
+
+  <!-- Import Map para evitar el error #31 (React Duplicado) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.3.1",
+        "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.378.0?external=react"
+      }
+    }
+  </script>
   
   <!-- Tailwind CSS para los estilos -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -61,11 +72,11 @@
 
   <!-- Código Principal en React -->
   <script type="text/babel" data-type="module">
-    import React, { useState, useEffect, useMemo } from 'https://esm.sh/react@18';
-    import { createRoot } from 'https://esm.sh/react-dom@18/client';
+    import React, { useState, useEffect, useMemo } from 'react';
+    import { createRoot } from 'react-dom/client';
     import { 
       CheckCircle2, Circle, BookOpen, Calendar, ChevronRight, Edit3, Printer, PlusCircle, Layout, Clock, ArrowLeft, ArrowRight, User, Eye, EyeOff, Droplet, Moon, Dumbbell, Quote, GraduationCap, Download, Trash2, Lock, Settings, Plus, Check, ListChecks, ClipboardList, History, Sparkles, Flower2, Upload, RefreshCw, Image as ImageIcon, Smile, Meh, Frown, Monitor, TrendingUp 
-    } from 'https://esm.sh/lucide-react';
+    } from 'lucide-react';
 
     const App = () => {
       const apiKey = ""; // API Key (Vercel lo ignora al ser web estática)
@@ -765,4 +776,8 @@
   );
 };
 
-export default App;
+const root = createRoot(document.getElementById('root'));
+root.render(<App />);
+  </script>
+</body>
+</html>
