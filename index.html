@@ -5,7 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#FCF8FF">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Bitácora">
+  
   <title>Agenda - Bitácora</title>
+
+  <!-- ICONOS PARA LA APP (Jacaranda Style) -->
+  <!-- Estos íconos son los que leerá tu Samsung o tu compu al instalarla -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%239B5DE5%22/><path d=%22M50 20 C60 40 85 45 85 70 C85 95 60 100 50 80 C40 100 15 95 15 70 C15 45 40 40 50 20 Z%22 fill=%22white%22/></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%239B5DE5%22/><path d=%22M50 20 C60 40 85 45 85 70 C85 95 60 100 50 80 C40 100 15 95 15 70 C15 45 40 40 50 20 Z%22 fill=%22white%22/></svg>">
+  
+  <!-- MANIFEST: Le dice a tu tableta "Oye, soy una app instalable" -->
+  <link rel="manifest" href='data:application/manifest+json,{
+    "name": "Agenda Bitácora Docente",
+    "short_name": "Bitácora",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#FCF8FF",
+    "theme_color": "#9B5DE5",
+    "icons": [{
+      "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%239B5DE5%22/><path d=%22M50 20 C60 40 85 45 85 70 C85 95 60 100 50 80 C40 100 15 95 15 70 C15 45 40 40 50 20 Z%22 fill=%22white%22/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }]
+  }' />
 
   <!-- Import Map para evitar el error #31 (React Duplicado) -->
   <script type="importmap">
