@@ -58,7 +58,7 @@
     import React, { useState, useEffect, useMemo, useRef } from 'react';
     import { createRoot } from 'react-dom/client';
     import { 
-      CheckCircle2, Circle, BookOpen, Calendar, ChevronRight, Edit3, Printer, PlusCircle, Layout, Clock, ArrowLeft, ArrowRight, User, Eye, EyeOff, Droplet, Moon, Dumbbell, Quote, GraduationCap, Download, Trash2, Lock, Settings, Plus, Check, ListChecks, ClipboardList, History, Sparkles, Flower2, Upload, RefreshCw, Image as ImageIcon, Smile, Meh, Frown, Monitor, TrendingUp, CalendarDays, RotateCcw, X, AlertCircle, Wallet, CreditCard, Receipt, PiggyBank, ArrowUpRight, ArrowDownLeft, ImagePlus, Palette, PieChart, BarChart3, Calculator, AlertTriangle, HeartPulse, Utensils, Flame, Activity, Coffee, Play, CalendarClock, BookCopy, FileUp, Footprints
+      CheckCircle2, Circle, BookOpen, Calendar, ChevronRight, Edit3, Printer, PlusCircle, Layout, Clock, ArrowLeft, ArrowRight, User, Eye, EyeOff, Droplet, Moon, Dumbbell, Quote, GraduationCap, Download, Trash2, Lock, Settings, Plus, Check, ListChecks, ClipboardList, History, Sparkles, Flower2, Upload, RefreshCw, Image as ImageIcon, Smile, Meh, Frown, Monitor, TrendingUp, CalendarDays, RotateCcw, X, AlertCircle, Wallet, CreditCard, Receipt, PiggyBank, ArrowUpRight, ArrowDownLeft, ImagePlus, Palette, PieChart, BarChart3, Calculator, AlertTriangle, HeartPulse, Utensils, Flame, Activity, Coffee, Play, CalendarClock, BookCopy, FileUp, Footprints, NotebookPen, DownloadCloud
     } from 'lucide-react';
 
     const THEMES = {
@@ -93,6 +93,129 @@
       { id: 'AB3', name: 'Plancha (Segundos)', target: 'Abdomen', defaultSeries: 3, defaultReps: 45 },
       { id: 'AB4', name: 'Giro Ruso (Russian Twist)', target: 'Abdomen', defaultSeries: 3, defaultReps: 20 }
     ];
+
+    // --- COMPONENTE DE GRÁFICA DE LÍNEA (TIPO CARDIO) ---
+    const LineChart = ({ data, labels, color, maxVal, height = "h-24", unit = "" }) => {
+       const max = maxVal || Math.max(...data, 1);
+       
+       const points = data.map((val, idx) => {
+          const x = (idx / (Math.max(data.length - 1, 1))) * 100;
+          const y = 100 - ((val / max) * 100);
+          return `${x},${y}`;
+       }).join(" ");
+
+       return (
+          <div className={`w-full ${height} flex flex-col`}>
+             <div className="flex-1 relative w-full pt-3 pb-3 px-2">
+                <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
+                   {/* Línea Principal */}
+                   <polyline 
+                     points={points} 
+                     fill="none" 
+                     stroke={color} 
+                     strokeWidth="2.5" 
+                     vectorEffect="nonScalingStroke" 
+                     strokeLinecap="round" 
+                     strokeLinejoin="round" 
+                     className="drop-shadow-sm"
+                   />
+                   {/* Puntos (Nodos) */}
+                   {data.map((val, idx) => {
+                      const x = (idx / (Math.max(data.length - 1, 1))) * 100;
+                      const y = 100 - ((val / max) * 100);
+                      return (
+                         <circle 
+                           key={idx} 
+                           cx={x} cy={y} r="4" 
+                           fill="white" 
+                           stroke={color} 
+                           strokeWidth="2" 
+                           vectorEffect="nonScalingStroke" 
+                           className="transition-all hover:r-[6px] cursor-pointer shadow-sm"
+                         >
+                           <title>{labels[idx]}: {val} {unit}</title>
+                         </circle>
+                      )
+                   })}
+                </svg>
+             </div>
+             {/* Eje X (Etiquetas) */}
+             <div className="flex justify-between w-full mt-2 px-1">
+                {labels.map((l, idx) => {
+                   const dObj = new Date(l + 'T12:00:00');
+                   const dayStr = dObj.getDate().toString().padStart(2, '0');
+                   const showLabel = labels.length <= 7 || idx % Math.ceil(labels.length/7) === 0 || idx === labels.length - 1;
+                   return (
+                     <span key={idx} className={`text-[7px] text-slate-400 font-bold ${showLabel ? 'opacity-100' : 'opacity-0'}`}>
+                        {dayStr}
+                     </span>
+                   )
+                })}
+             </div>
+          </div>
+       );
+    };
+
+    // --- NUEVO COMPONENTE: MULTI-LINE CHART ESTILO BUJO ---
+    const MultiLineChart = ({ datasets, labels, height = "h-48" }) => {
+       return (
+          <div className={`w-full ${height} flex flex-col`}>
+             {/* Leyenda de colores */}
+             <div className="flex flex-wrap gap-3 justify-center mb-4">
+                {datasets.map((ds, i) => (
+                   <div key={i} className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full shadow-sm border border-slate-100">
+                      <span className="w-3 h-3 rounded-full shadow-inner" style={{ backgroundColor: ds.color }}></span>
+                      <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">{ds.label}</span>
+                   </div>
+                ))}
+             </div>
+             
+             {/* Gráfica con cuadrícula de libreta */}
+             <div className="flex-1 relative w-full pt-6 pb-6 px-4 bg-[#FCF8FF] rounded-[2rem] border border-purple-50 shadow-inner overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none opacity-30" style={{ backgroundImage: 'linear-gradient(#cbd5e1 1px, transparent 1px), linear-gradient(90deg, #cbd5e1 1px, transparent 1px)', backgroundSize: '20px 20px', backgroundPosition: 'center center' }}></div>
+                
+                <svg className="w-full h-full overflow-visible relative z-10" preserveAspectRatio="none" viewBox="0 0 100 100">
+                   {datasets.map((ds, dsIdx) => {
+                      const offset = (dsIdx * 3) - (datasets.length * 1.5); 
+                      const points = ds.data.map((val, idx) => {
+                         const x = (idx / (Math.max(ds.data.length - 1, 1))) * 100;
+                         const baseY = 100 - (val * 100); 
+                         const clampedY = Math.max(5, Math.min(95, baseY));
+                         const y = clampedY + offset;
+                         return `${x},${y}`;
+                      }).join(" ");
+
+                      return (
+                         <g key={dsIdx}>
+                            <polyline points={points} fill="none" stroke={ds.color} strokeWidth="3" vectorEffect="nonScalingStroke" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" className="drop-shadow-md" />
+                            {ds.data.map((val, idx) => {
+                               const x = (idx / (Math.max(ds.data.length - 1, 1))) * 100;
+                               const baseY = 100 - (val * 100);
+                               const clampedY = Math.max(5, Math.min(95, baseY));
+                               const y = clampedY + offset;
+                               return (
+                                  <circle key={idx} cx={x} cy={y} r="5" fill="white" stroke={ds.color} strokeWidth="2.5" vectorEffect="nonScalingStroke" className="transition-all hover:r-[7px] cursor-pointer shadow-sm">
+                                    <title>{ds.label}: {val ? 'Completado' : 'Pendiente'}</title>
+                                  </circle>
+                               )
+                            })}
+                         </g>
+                      );
+                   })}
+                </svg>
+             </div>
+             {/* Fechas eje X */}
+             <div className="flex justify-between w-full mt-3 px-2">
+                {labels.map((l, idx) => {
+                   const dObj = new Date(l + 'T12:00:00');
+                   const dayStr = dObj.getDate().toString().padStart(2, '0');
+                   const showLabel = labels.length <= 7 || idx % Math.ceil(labels.length/7) === 0 || idx === labels.length - 1;
+                   return <span key={idx} className={`text-[9px] text-slate-400 font-bold ${showLabel ? 'opacity-100' : 'opacity-0'}`}>{dayStr}</span>
+                })}
+             </div>
+          </div>
+       );
+    };
 
     const App = () => {
       // --- ESTADOS PRINCIPALES ---
@@ -129,6 +252,7 @@
       const [groupForm, setGroupForm] = useState({ name: '', subj: '', schedule: [] });
       const [newQuote, setNewQuote] = useState(''); 
       const [manualEntry, setManualEntry] = useState({ topics: '', adas: '' });
+      
       const [chartRange, setChartRange] = useState('week'); 
 
       // --- PERSISTENCIA BLINDADA V23 ---
@@ -149,10 +273,9 @@
       const [personalData, setPersonalData] = useState(() => {
         const saved = localStorage.getItem('bitacora_personal_v23') || localStorage.getItem('bitacora_personal_v22') || localStorage.getItem('bitacora_personal_v21') || localStorage.getItem('bitacora_personal_v20') || localStorage.getItem('bitacora_personal_v19');
         const baseData = {
-          appTitle: 'Agenda - Bitácora', theme: 'jacaranda', habits: { exercise: false }, 
-          waterLogs: {}, sleepLogs: {}, stepsLogs: {}, sleep: { start: '22:00', end: '06:00' }, 
-          tasks: [],
-          quotes: ["La arquitectura es música congelada."], activeQuoteIndex: 0,
+          appTitle: 'Agenda - Bitácora', theme: 'jacaranda', 
+          waterLogs: {}, sleepLogs: {}, stepsLogs: {}, savingsLogs: {}, sleep: { start: '22:00', end: '06:00' }, 
+          tasks: [], quotes: ["La arquitectura es música congelada."], activeQuoteIndex: 0,
           habitMatrix: {}, moodLogs: {}, calendarEvents: {},
           finance: { accounts: [{ id: 'A1', name: 'Banorte', type: 'Crédito', cutDate: '15', payDate: '05' }, { id: 'A2', name: 'Efectivo (Billetera)', type: 'Efectivo', cutDate: '-', payDate: '-' }], transactions: [], fixedPayments: [] },
           health: { meals: {}, workouts: {} }
@@ -170,7 +293,6 @@
                  safeFinance.accounts.push({ id: 'A2', name: 'Efectivo (Billetera)', type: 'Efectivo', cutDate: '-', payDate: '-' }); 
               }
               
-              // BLINDAJE EXTREMO PARA TAREAS Y FRASES
               const safeTasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
               const safeQuotes = Array.isArray(parsed.quotes) && parsed.quotes.length > 0 ? parsed.quotes : baseData.quotes;
 
@@ -182,6 +304,7 @@
                 waterLogs: parsed.waterLogs || {}, 
                 sleepLogs: parsed.sleepLogs || {}, 
                 stepsLogs: parsed.stepsLogs || {}, 
+                savingsLogs: parsed.savingsLogs || {},
                 health: parsed.health || { meals: {}, workouts: {} }, 
                 tasks: safeTasks,
                 moodLogs: parsed.moodLogs || {},
@@ -223,6 +346,18 @@
       const currentDayName = useMemo(() => {
          const d = new Date(selectedDate + 'T12:00:00');
          return DAYS_OF_WEEK[d.getDay()];
+      }, [selectedDate]);
+
+      // Calculo de semana actual (Lunes a Domingo) para Bujo (Habit Matrix visual)
+      const weekDays = useMemo(() => {
+        const dt = new Date(selectedDate + 'T12:00:00');
+        const day = dt.getDay();
+        const diff = dt.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(dt.setDate(diff));
+        return Array.from({length: 7}, (_, i) => {
+          const d = new Date(monday); d.setDate(monday.getDate() + i);
+          return d.toISOString().split('T')[0];
+        });
       }, [selectedDate]);
 
       const groupsToday = useMemo(() => {
@@ -346,7 +481,38 @@
          reader.readAsText(file);
       };
 
-      const handleFactoryReset = () => { localStorage.clear(); setGroups([{ id: 'G1', name: 'Nuevo Grupo', subject: 'Materia...', color: '#BE95C4', schedule:[], topics: [], adas: [], sessions: [], tasks: [] }]); setPersonalData({ appTitle: 'Agenda - Bitácora', theme: 'jacaranda', habits: { exercise: false }, waterLogs: {}, sleepLogs: {}, stepsLogs: {}, sleep: { start: '22:00', end: '06:00' }, tasks: [], quotes: ["La arquitectura es música congelada."], activeQuoteIndex: 0, habitMatrix: {}, moodLogs: {}, calendarEvents: {}, finance: { accounts: [], transactions: [], fixedPayments: [] }, health: { meals: {}, workouts: {} } }); setCoverImage(null); setShowFactoryResetModal(false); setActiveGroupId('G1'); setViewMode('welcome'); showToast("¡Reseteo exitoso!"); };
+      // EXPORTAR BUJO CSV
+      const handleExportBujo = () => {
+         const dates = new Set([...Object.keys(personalData.stepsLogs || {}), ...Object.keys(personalData.sleepLogs || {}), ...Object.keys(personalData.moodLogs || {}), ...Object.keys(personalData.savingsLogs || {}), ...Object.keys(personalData.waterLogs || {})]);
+         Object.values(personalData.habitMatrix || {}).forEach(h => Object.keys(h).forEach(d => dates.add(d)));
+         const sortedDates = Array.from(dates).sort();
+         const habits = Object.keys(personalData.habitMatrix || {});
+         
+         let csv = "Fecha,Agua(Vasos),Sueno(Hrs),Pasos,Humor(1-5),Ahorro($)";
+         habits.forEach(h => csv += "," + h);
+         csv += "\n";
+         
+         sortedDates.forEach(d => {
+            const row = [
+               d,
+               (personalData.waterLogs || {})[d] || 0,
+               (personalData.sleepLogs || {})[d] || 0,
+               (personalData.stepsLogs || {})[d] || 0,
+               (personalData.moodLogs || {})[d] || 0,
+               (personalData.savingsLogs || {})[d] || 0
+            ];
+            habits.forEach(h => row.push((personalData.habitMatrix[h] || {})[d] ? 1 : 0));
+            csv += row.join(",") + "\n";
+         });
+
+         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+         const url = URL.createObjectURL(blob);
+         const link = document.createElement("a");
+         link.href = url; link.download = `Bujo_Estadisticas_${new Date().toLocaleDateString()}.csv`;
+         link.click();
+      };
+
+      const handleFactoryReset = () => { localStorage.clear(); setGroups([{ id: 'G1', name: 'Nuevo Grupo', subject: 'Materia...', color: '#BE95C4', schedule:[], topics: [], adas: [], sessions: [], tasks: [] }]); setPersonalData({ appTitle: 'Agenda - Bitácora', theme: 'jacaranda', habits: { exercise: false }, waterLogs: {}, sleepLogs: {}, stepsLogs: {}, savingsLogs: {}, sleep: { start: '22:00', end: '06:00' }, tasks: [], quotes: ["La arquitectura es música congelada."], activeQuoteIndex: 0, habitMatrix: {}, moodLogs: {}, calendarEvents: {}, finance: { accounts: [], transactions: [], fixedPayments: [] }, health: { meals: {}, workouts: {} } }); setCoverImage(null); setShowFactoryResetModal(false); setActiveGroupId('G1'); setViewMode('welcome'); showToast("¡Reseteo exitoso!"); };
       
       // FINANZAS
       const formatMoney = (n) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n);
@@ -357,7 +523,7 @@
       const accountSummaries = useMemo(() => { return (personalData.finance?.accounts || []).map(acc => { const variableTotal = (personalData.finance?.transactions || []).filter(t => t.accountId === acc.id).reduce((sum, t) => sum + t.amount, 0); const fixedTotal = (personalData.finance?.fixedPayments || []).filter(f => f.accountId === acc.id).reduce((sum, f) => sum + f.amount, 0); return { ...acc, variableTotal, fixedTotal, total: variableTotal + fixedTotal }; }); }, [personalData.finance]);
       const grandTotal = accountSummaries.reduce((sum, acc) => sum + acc.total, 0);
 
-      // TRACKERS BLINDADOS
+      // TRACKERS BUJO
       const toggleMatrixHabit = (habitName, date) => setPersonalData(prev => { 
          const currentMatrix = prev.habitMatrix || {};
          const currentHabitObj = currentMatrix[habitName] || {};
@@ -372,6 +538,7 @@
       const safeQuotesList = Array.isArray(personalData.quotes) && personalData.quotes.length > 0 ? personalData.quotes : ["La arquitectura es música congelada."];
       const safeTasksList = Array.isArray(personalData.tasks) ? personalData.tasks : [];
 
+      // --- VISTAS ---
       const WelcomeCover = () => {
          const currentQuoteIndex = (personalData.activeQuoteIndex || 0) < safeQuotesList.length ? (personalData.activeQuoteIndex || 0) : 0;
          return (
@@ -424,7 +591,7 @@
                 <button onClick={() => setViewMode('daily')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'daily' ? 'bg-theme-main text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><Calendar size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Hoy</span></button>
                 <button onClick={() => setViewMode('calendar')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'calendar' ? 'bg-theme-accent text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><CalendarDays size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Calendario</span></button>
                 <button onClick={() => setViewMode('finance')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'finance' ? 'bg-theme-dark text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><Wallet size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Cartera</span></button>
-                <button onClick={() => setViewMode('personal')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'personal' ? 'bg-theme-sec text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><User size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Personal</span></button>
+                <button onClick={() => setViewMode('bujo')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'bujo' ? 'bg-emerald-500 text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><NotebookPen size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Bujo</span></button>
                 <button onClick={() => setViewMode('health')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'health' ? 'bg-[#FF9B85] text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><HeartPulse size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Salud</span></button>
                 <button onClick={() => setViewMode('classes')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'classes' || viewMode === 'groups' ? 'bg-indigo-500 text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><BookCopy size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Clases</span></button>
                 <button onClick={() => setViewMode('settings')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'settings' ? 'bg-slate-700 text-white shadow-lg' : 'hover:bg-theme-surface text-slate-400'}`}><Settings size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Config</span></button>
@@ -434,6 +601,7 @@
 
           {viewMode !== 'welcome' && <button onClick={() => setIsPrivateMode(!isPrivateMode)} className="fixed bottom-10 right-10 z-50 p-6 rounded-full bg-white shadow-2xl border border-theme-surface text-theme-sec hover:scale-110 active:scale-95 transition-all print:hidden">{isPrivateMode ? <Eye size={28} /> : <EyeOff size={28} />}</button>}
 
+          {/* CONTENEDOR PRINCIPAL */}
           <main className="flex-1 flex flex-col overflow-hidden relative">
             {isPrivateMode && viewMode !== 'welcome' && <div className="absolute inset-0 z-40 bg-theme-bg/95 backdrop-blur-2xl flex flex-col items-center justify-center text-theme-main"><Lock size={100} className="mb-8 opacity-10" /><h2 className="text-4xl font-serif font-bold italic tracking-widest uppercase">Modo Privado</h2></div>}
 
@@ -589,10 +757,238 @@
               </div>
             )}
 
+            {/* LA NUEVA VISTA BUJO */}
+            {viewMode === 'bujo' && (
+              <div className="flex-1 p-10 overflow-y-auto max-w-7xl mx-auto w-full custom-scrollbar">
+                <header className="mb-10 flex justify-between items-end border-b border-theme-surface pb-8">
+                  <div>
+                    <p className="text-[12px] font-bold text-emerald-500 uppercase tracking-widest mb-2 italic">Mi Diario & Trackers</p>
+                    <h2 className="text-6xl font-serif font-bold text-theme-dark italic tracking-tighter">Bullet Journal</h2>
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex gap-2 bg-slate-50 p-1 rounded-full border border-slate-100 shadow-inner">
+                       <button onClick={()=>setChartRange('week')} className={`px-5 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${chartRange==='week'?'bg-white shadow-sm text-theme-dark':'text-slate-400 hover:text-slate-600'}`}>Semana</button>
+                       <button onClick={()=>setChartRange('month')} className={`px-5 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${chartRange==='month'?'bg-white shadow-sm text-theme-dark':'text-slate-400 hover:text-slate-600'}`}>Mes</button>
+                    </div>
+                    <button onClick={handleExportBujo} className="flex items-center gap-2 p-3 px-6 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-100 shadow-sm transition-all"><DownloadCloud size={16}/> Exportar (Excel)</button>
+                  </div>
+                </header>
+
+                {/* TRACKERS GRÁFICOS (LÍNEAS CARDIO) */}
+                <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg mb-8 relative overflow-hidden">
+                   <h3 className="text-xs font-bold uppercase text-theme-dark mb-6 tracking-[0.3em] flex items-center gap-3 italic"><TrendingUp size={18} /> Resumen {chartRange === 'week' ? 'Semanal' : 'Mensual'}</h3>
+                   <div className="flex gap-6 overflow-x-auto custom-scrollbar pb-4">
+                      {/* Pasos */}
+                      <div className="min-w-[250px] flex-1 bg-slate-50/50 p-4 rounded-[2rem] border border-slate-100">
+                         <p className="text-[10px] font-bold text-emerald-500 uppercase mb-2 text-center tracking-widest flex justify-center items-center gap-2"><Footprints size={14}/> Pasos</p>
+                         <LineChart 
+                            data={chartDays.map(d => (personalData.stepsLogs||{})[d] || 0)} 
+                            labels={chartDays} 
+                            color="#34d399" 
+                            maxVal={Math.max(10000, ...chartDays.map(d => (personalData.stepsLogs||{})[d] || 0))} 
+                         />
+                      </div>
+                      {/* Sueño */}
+                      <div className="min-w-[250px] flex-1 bg-slate-50/50 p-4 rounded-[2rem] border border-slate-100">
+                         <p className="text-[10px] font-bold text-indigo-400 uppercase mb-2 text-center tracking-widest flex justify-center items-center gap-2"><Moon size={14}/> Sueño (Hrs)</p>
+                         <LineChart 
+                            data={chartDays.map(d => (personalData.sleepLogs||{})[d] || 0)} 
+                            labels={chartDays} 
+                            color="#818cf8" 
+                            maxVal={12} 
+                         />
+                      </div>
+                      {/* Humor */}
+                      <div className="min-w-[250px] flex-1 bg-slate-50/50 p-4 rounded-[2rem] border border-slate-100">
+                         <p className="text-[10px] font-bold text-amber-500 uppercase mb-2 text-center tracking-widest flex justify-center items-center gap-2"><Smile size={14}/> Humor</p>
+                         <LineChart 
+                            data={chartDays.map(d => (personalData.moodLogs||{})[d] || 0)} 
+                            labels={chartDays} 
+                            color="#fbbf24" 
+                            maxVal={5} 
+                         />
+                      </div>
+                      {/* Ahorro */}
+                      <div className="min-w-[250px] flex-1 bg-slate-50/50 p-4 rounded-[2rem] border border-slate-100">
+                         <p className="text-[10px] font-bold text-rose-500 uppercase mb-2 text-center tracking-widest flex justify-center items-center gap-2"><PiggyBank size={14}/> Ahorro ($)</p>
+                         <LineChart 
+                            data={chartDays.map(d => (personalData.savingsLogs||{})[d] || 0)} 
+                            labels={chartDays} 
+                            color="#fb7185" 
+                            maxVal={Math.max(100, ...chartDays.map(d => (personalData.savingsLogs||{})[d] || 0))} 
+                         />
+                      </div>
+                   </div>
+                </section>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* COLUMNA IZQUIERDA: INPUTS DE HOY */}
+                  <div className="space-y-8">
+                    {/* HUMOR */}
+                    <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg text-center">
+                       <h3 className="text-[10px] font-bold uppercase text-slate-400 mb-6 tracking-[0.4em] italic">Humor de Hoy</h3>
+                       <div className="flex justify-between bg-slate-50 rounded-[2rem] p-2 relative shadow-inner">
+                          {[1,2,3,4,5].map(lvl => {
+                             const isActive = (personalData.moodLogs||{})[selectedDate] === lvl;
+                             const colors = {1:'bg-red-400', 2:'bg-orange-400', 3:'bg-yellow-400', 4:'bg-lime-400', 5:'bg-emerald-400'};
+                             const emojis = {1:'😣', 2:'🙁', 3:'😐', 4:'🙂', 5:'😁'};
+                             const labels = {1:'Pésimo', 2:'Mal', 3:'Normal', 4:'Bien', 5:'Genial'};
+                             return (
+                               <button key={lvl} onClick={()=>setMood(selectedDate, lvl)} className={`flex-1 flex flex-col items-center justify-center py-4 rounded-[1.5rem] transition-all duration-300 ${isActive ? colors[lvl] + ' text-white shadow-lg scale-110 z-10' : 'text-slate-400 hover:bg-slate-200'}`}>
+                                  <span className="text-2xl mb-1">{emojis[lvl]}</span>
+                                  {isActive && <span className="text-[7px] font-bold uppercase tracking-widest">{labels[lvl]}</span>}
+                               </button>
+                             )
+                          })}
+                       </div>
+                    </section>
+
+                    {/* SUEÑO Y AGUA */}
+                    <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg">
+                       <h3 className="text-[10px] font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2 italic"><Moon size={14}/> Descanso & Agua</h3>
+                       <div className="space-y-6">
+                          <div className="flex items-center justify-between">
+                             <span className="text-sm font-bold text-slate-600 italic">Horario Sueño</span>
+                             <span className="text-xs font-bold text-indigo-500 bg-indigo-50 px-3 py-1 rounded-full">{(personalData.sleepLogs||{})[selectedDate] || calculateSleepHours(personalData.sleep?.start, personalData.sleep?.end)} hrs</span>
+                          </div>
+                          <div className="flex gap-3">
+                             <div className="flex-1 bg-slate-50 p-3 rounded-2xl flex flex-col items-center"><span className="text-[8px] font-bold uppercase text-slate-400 mb-1">Dormir</span><input type="time" value={personalData.sleep?.start || '22:00'} onChange={(e)=>handleSleepChange('start', e.target.value)} className="bg-transparent text-sm font-bold text-indigo-500 focus:outline-none" /></div>
+                             <div className="flex-1 bg-slate-50 p-3 rounded-2xl flex flex-col items-center"><span className="text-[8px] font-bold uppercase text-slate-400 mb-1">Despertar</span><input type="time" value={personalData.sleep?.end || '06:00'} onChange={(e)=>handleSleepChange('end', e.target.value)} className="bg-transparent text-sm font-bold text-indigo-500 focus:outline-none" /></div>
+                          </div>
+                          <div className="pt-6 border-t border-slate-100">
+                             <div className="flex items-center justify-between mb-4"><span className="text-sm font-bold text-slate-600 italic tracking-tight">Agua</span><span className="text-xs font-bold text-blue-400">{(personalData.waterLogs||{})[selectedDate] || 0}/5 Vasos</span></div>
+                             <div className="flex justify-between gap-1.5">{[1,2,3,4,5].map(i => { const currentWater = (personalData.waterLogs||{})[selectedDate] || 0; return (<button key={`waterbtn-${i}`} onClick={() => setPersonalData(p=>({...p, waterLogs: {...(p.waterLogs||{}), [selectedDate]: i}}))} className={`flex-1 h-10 rounded-2xl transition-transform active:scale-90 flex items-center justify-center ${currentWater >= i ? 'bg-blue-400 shadow-md text-white' : 'bg-slate-50 border border-slate-100 text-slate-300'}`}><Droplet size={16} fill={currentWater >= i ? 'white' : 'none'} /></button>) })}</div>
+                          </div>
+                       </div>
+                    </section>
+
+                    {/* PASOS Y ALCANCÍA */}
+                    <div className="grid grid-cols-2 gap-4">
+                       <section className="bg-emerald-50 p-6 rounded-[2.5rem] border border-emerald-100 shadow-sm text-center">
+                          <Footprints size={24} className="mx-auto mb-2 text-emerald-500" />
+                          <p className="text-[9px] font-bold uppercase text-emerald-600 tracking-widest mb-3">Pasos Hoy</p>
+                          <input type="number" value={(personalData.stepsLogs||{})[selectedDate] || ''} onChange={(e)=>setPersonalData(p=>({...p, stepsLogs: {...(p.stepsLogs||{}), [selectedDate]: parseInt(e.target.value)||0}}))} placeholder="0" className="w-full text-2xl font-serif font-bold text-emerald-700 bg-white p-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-300 text-center shadow-inner" />
+                          <div className="mt-3 w-full h-1.5 bg-emerald-200 rounded-full overflow-hidden"><div className="h-full bg-emerald-500" style={{width: `${Math.min(100, (((personalData.stepsLogs||{})[selectedDate]||0)/10000)*100)}%`}}></div></div>
+                       </section>
+                       <section className="bg-rose-50 p-6 rounded-[2.5rem] border border-rose-100 shadow-sm text-center relative overflow-hidden">
+                          <PiggyBank size={24} className="mx-auto mb-2 text-rose-500" />
+                          <p className="text-[9px] font-bold uppercase text-rose-600 tracking-widest mb-3">Ahorro Hoy</p>
+                          <input type="number" placeholder="+ $" onKeyDown={(e)=>{ if(e.key==='Enter' && e.target.value){ const v = parseFloat(e.target.value); if(v>0) setPersonalData(p=>({...p, savingsLogs: {...(p.savingsLogs||{}), [selectedDate]: ((p.savingsLogs||{})[selectedDate]||0)+v}})); e.target.value=''; showToast("Ahorro sumado!"); } }} className="w-full text-xl font-serif font-bold text-rose-700 bg-white p-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-rose-300 text-center shadow-inner" />
+                          <p className="text-[10px] font-bold text-rose-400 mt-3">Total hoy: ${((personalData.savingsLogs||{})[selectedDate]||0)}</p>
+                       </section>
+                    </div>
+                  </div>
+
+                  {/* COLUMNA DERECHA: MATRIZ DE HÁBITOS */}
+                  <div className="lg:col-span-2">
+                    <section className="bg-white p-10 rounded-[4rem] border border-theme-surface shadow-xl h-full flex flex-col">
+                       <div className="flex justify-between items-center mb-8 border-b border-slate-50 pb-6">
+                          <h3 className="text-sm font-bold uppercase text-slate-500 tracking-widest flex items-center gap-2 italic"><ListChecks size={18}/> Habit Matrix</h3>
+                          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-full shadow-inner">
+                             <input type="text" id="inlineHabitInput" placeholder="Nuevo hábito..." className="bg-transparent text-[11px] px-3 focus:outline-none w-32 font-bold text-slate-600 italic" onKeyDown={(e)=>{ if(e.key==='Enter' && e.target.value){ addNewMatrixHabit(e.target.value); e.target.value=''; } }} />
+                             <button onClick={()=>{const i=document.getElementById('inlineHabitInput'); if(i.value){addNewMatrixHabit(i.value); i.value='';}}} className="p-1.5 bg-theme-main text-white rounded-full hover:scale-110 transition-transform"><Plus size={12}/></button>
+                          </div>
+                       </div>
+                       
+                       <div className="flex-1 overflow-x-auto custom-scrollbar mb-6">
+                          <table className="w-full text-left border-separate border-spacing-y-3">
+                             <thead>
+                                <tr>
+                                   <th className="pb-4 px-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hábito</th>
+                                   {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, idx) => {
+                                      const dayDate = new Date(weekDays[idx] + 'T12:00:00');
+                                      const dStr = dayDate.toISOString().split('T')[0];
+                                      const isToday = dStr === selectedDate;
+                                      return <th key={idx} className={`pb-4 px-1 text-center text-[10px] font-bold uppercase tracking-widest ${isToday ? 'text-theme-main scale-125' : 'text-slate-300'}`}>{d}</th>
+                                   })}
+                                   <th className="pb-4 px-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">%</th>
+                                </tr>
+                             </thead>
+                             <tbody>
+                                {Object.keys(personalData.habitMatrix || {}).map(habit => {
+                                   const completions = weekDays.filter(d => (personalData.habitMatrix||{})[habit]?.[d]).length;
+                                   const percent = Math.round((completions/7)*100) || 0;
+                                   return (
+                                      <tr key={habit} className="group">
+                                         <td className="py-2 px-2">
+                                            <div className="flex items-center gap-2">
+                                               <button onClick={() => setPersonalData(p => { const newM = {...p.habitMatrix}; delete newM[habit]; return {...p, habitMatrix: newM}; })} className="opacity-0 group-hover:opacity-100 text-red-200 hover:text-red-500 transition-opacity"><Trash2 size={12}/></button>
+                                               <span className="text-sm font-semibold text-slate-700 italic">{habit}</span>
+                                            </div>
+                                         </td>
+                                         {[0,1,2,3,4,5,6].map(i => { 
+                                            const dStr = weekDays[i]; 
+                                            const isActive = (personalData.habitMatrix||{})[habit]?.[dStr]; 
+                                            return (
+                                               <td key={`${habit}-${i}`} className="py-2 px-1 text-center">
+                                                  <button onClick={() => toggleMatrixHabit(habit, dStr)} className={`w-9 h-9 mx-auto rounded-[1rem] border-2 transition-all flex items-center justify-center ${isActive ? 'bg-theme-main border-transparent text-white shadow-md scale-110' : 'bg-slate-50 border-slate-100 hover:border-purple-200'}`}>
+                                                     {isActive && <Check size={14} />}
+                                                  </button>
+                                               </td>
+                                            );
+                                         })}
+                                         <td className="py-2 px-2 text-center">
+                                            <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${percent === 100 ? 'bg-emerald-100 text-emerald-600' : percent > 50 ? 'bg-theme-surface text-theme-main' : 'bg-slate-100 text-slate-400'}`}>{percent}%</span>
+                                         </td>
+                                      </tr>
+                                   )
+                                })}
+                             </tbody>
+                          </table>
+                          {Object.keys(personalData.habitMatrix || {}).length === 0 && <div className="text-center py-20 opacity-50"><ListChecks size={40} className="mx-auto mb-4 text-theme-main"/><p className="text-xs font-bold text-slate-500 uppercase tracking-widest italic">Añade tu primer hábito arriba</p></div>}
+                       </div>
+
+                       {/* NUEVO: GRÁFICA MULTILÍNEA BUJO STYLE */}
+                       <div className="pt-8 border-t border-slate-50 mt-auto">
+                          <p className="text-[10px] font-bold text-theme-main uppercase mb-6 text-left tracking-widest flex items-center gap-2"><TrendingUp size={14}/> Rastreador Global de Hábitos (Bujo)</p>
+                          <div className="w-full">
+                             {Object.keys(personalData.habitMatrix || {}).length > 0 ? (
+                                <MultiLineChart 
+                                   datasets={Object.keys(personalData.habitMatrix || {}).map((habit, idx) => {
+                                      const colors = ['#9B5DE5', '#34d399', '#f43f5e', '#fbbf24', '#0ea5e9', '#ec4899', '#8b5cf6'];
+                                      return {
+                                         label: habit,
+                                         color: colors[idx % colors.length],
+                                         data: chartDays.map(d => (personalData.habitMatrix||{})[habit]?.[d] ? 1 : 0)
+                                      };
+                                   })}
+                                   labels={chartDays}
+                                   height="h-64"
+                                />
+                             ) : (
+                                <p className="text-[10px] text-slate-400 italic">No hay hábitos registrados para graficar.</p>
+                             )}
+                          </div>
+                       </div>
+                    </section>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 mt-8">
+                    <section className="bg-theme-surface/50 p-10 rounded-[3.5rem] border border-theme-surface shadow-lg h-[400px] flex flex-col">
+                       <h3 className="text-[11px] font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2 italic"><ClipboardList size={14}/> Notas Personales</h3>
+                       <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
+                          {safeTasksList.map(t => (
+                             <div key={t.id} onClick={() => setPersonalData(p => ({...p, tasks: safeTasksList.map(x => x.id === t.id ? {...x, done: !x.done} : x)}))} className="flex items-center gap-3 p-3 bg-white rounded-[1.5rem] cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-theme-surface group">
+                                {t.done ? <CheckCircle2 size={18} className="text-theme-main" /> : <Circle size={18} className="text-slate-300 group-hover:text-theme-main" />}
+                                <span className={`text-[13px] italic flex-1 ${t.done ? 'line-through text-slate-400 opacity-50' : 'text-slate-700 font-semibold'}`}>{t.text}</span>
+                                <button onClick={(e) => { e.stopPropagation(); setPersonalData(p=>({...p, tasks: safeTasksList.filter(x=>x.id !== t.id)})); }} className="opacity-0 group-hover:opacity-100 text-red-200 hover:text-red-400"><Trash2 size={14}/></button>
+                             </div>
+                          ))}
+                          {safeTasksList.length === 0 && <p className="text-center text-xs text-slate-400 italic py-10">Agrega una nueva nota.</p>}
+                       </div>
+                       <div className="mt-4">
+                          <input type="text" placeholder="+ Nueva nota..." className="w-full p-4 bg-white rounded-[2rem] text-sm focus:outline-none italic transition-all shadow-sm border border-transparent focus:border-theme-main text-slate-600" onKeyDown={(e) => { if(e.key === 'Enter' && e.target.value.trim()) { setPersonalData(p => ({...p, tasks: [...safeTasksList, {id: Date.now(), text: e.target.value.trim(), done: false}]})); e.target.value = ''; } }} />
+                       </div>
+                    </section>
+                </div>
+              </div>
+            )}
+
             {viewMode === 'health' && (
               <div className="flex-1 p-10 overflow-y-auto max-w-7xl mx-auto w-full custom-scrollbar">
                 <header className="mb-10 flex justify-between items-end border-b border-theme-surface pb-8">
-                  <div><p className="text-[12px] font-bold text-[#FF9B85] uppercase tracking-widest mb-2 italic">Mi Templo</p><h2 className="text-6xl font-serif font-bold text-theme-dark italic tracking-tighter">Salud & Bienestar</h2></div>
+                  <div><p className="text-[12px] font-bold text-[#FF9B85] uppercase tracking-widest mb-2 italic">Mi Templo Físico</p><h2 className="text-6xl font-serif font-bold text-theme-dark italic tracking-tighter">Entrenamiento</h2></div>
                   <button onClick={() => setShowGymModal(true)} className="flex items-center gap-3 bg-gradient-to-r from-theme-dark to-theme-sec text-white px-8 py-4 rounded-full font-bold text-xs tracking-widest uppercase shadow-xl hover:scale-105 transition-all"><Play size={16} fill="white"/> Iniciar Entrenamiento</button>
                 </header>
                 <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg mb-8 relative overflow-hidden">
@@ -602,36 +998,26 @@
                       <div className="flex gap-2 bg-slate-50 p-1 rounded-full"><button onClick={()=>setChartRange('week')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${chartRange==='week'?'bg-white shadow-sm text-theme-dark':'text-slate-400'}`}>Semana</button><button onClick={()=>setChartRange('month')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${chartRange==='month'?'bg-white shadow-sm text-theme-dark':'text-slate-400'}`}>Mes</button></div>
                    </div>
                    <div className="flex gap-8 overflow-x-auto custom-scrollbar pb-4 relative z-10">
-                      <div className="min-w-[300px] flex-1"><p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Hidratación</p><div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">{chartDays.map((d, i) => { const w = (personalData.waterLogs||{})[d] || 0; return (<div key={`water-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: ${w} vasos`}><div className="w-full max-w-[16px] bg-blue-300 rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (w/5)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}</div></div>
-                      <div className="min-w-[300px] flex-1"><p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Horas de Sueño</p><div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">{chartDays.map((d, i) => { const h = (personalData.sleepLogs||{})[d] || 0; return (<div key={`sleep-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: ${h} horas`}><div className="w-full max-w-[16px] bg-indigo-300 rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (h/12)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}</div></div>
-                      <div className="min-w-[300px] flex-1"><p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Energía Física (Gym)</p><div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">{chartDays.map((d, i) => { const energy = (personalData.health?.workouts || {})[d]?.energy || 0; return (<div key={`energy-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: Nivel ${energy}`}><div className="w-full max-w-[16px] bg-[#FF9B85] rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (energy/5)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}</div></div>
-                      <div className="min-w-[300px] flex-1"><p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Pasos</p><div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">{chartDays.map((d, i) => { const steps = (personalData.stepsLogs||{})[d] || 0; return (<div key={`steps-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: ${steps} pasos`}><div className="w-full max-w-[16px] bg-emerald-300 rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (steps/10000)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}</div></div>
+                      <div className="min-w-[250px] flex-1">
+                         <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 text-center tracking-widest flex justify-center items-center gap-2"><Droplet size={14} className="text-blue-400"/> Agua (Vasos)</p>
+                         <LineChart data={chartDays.map(d => (personalData.waterLogs||{})[d] || 0)} labels={chartDays} color="#60a5fa" maxVal={5} />
+                      </div>
+                      <div className="min-w-[250px] flex-1">
+                         <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 text-center tracking-widest flex justify-center items-center gap-2"><Moon size={14} className="text-indigo-400"/> Sueño (Hrs)</p>
+                         <LineChart data={chartDays.map(d => (personalData.sleepLogs||{})[d] || 0)} labels={chartDays} color="#818cf8" maxVal={12} />
+                      </div>
+                      <div className="min-w-[250px] flex-1">
+                         <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 text-center tracking-widest flex justify-center items-center gap-2"><Flame size={14} className="text-[#FF9B85]"/> Energía Gym</p>
+                         <LineChart data={chartDays.map(d => (personalData.health?.workouts || {})[d]?.energy || 0)} labels={chartDays} color="#FF9B85" maxVal={5} />
+                      </div>
+                      <div className="min-w-[250px] flex-1">
+                         <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 text-center tracking-widest flex justify-center items-center gap-2"><Footprints size={14} className="text-emerald-400"/> Pasos</p>
+                         <LineChart data={chartDays.map(d => (personalData.stepsLogs||{})[d] || 0)} labels={chartDays} color="#34d399" maxVal={Math.max(10000, ...chartDays.map(d => (personalData.stepsLogs||{})[d] || 0))} />
+                      </div>
                    </div>
                 </section>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   <div className="space-y-8">
-                    <section className="bg-white p-10 rounded-[3.5rem] border border-theme-surface shadow-lg">
-                       <h3 className="text-[10px] font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2 italic"><Droplet size={14}/> Lo Básico Hoy</h3>
-                       <div className="space-y-8">
-                          <div>
-                             <div className="flex items-center justify-between mb-4"><span className="text-sm font-bold text-slate-600 italic tracking-tight">Agua</span><span className="text-xs font-bold text-blue-400">{(personalData.waterLogs||{})[selectedDate] || 0}/5 Vasos</span></div>
-                             <div className="flex justify-between gap-1.5">{[1,2,3,4,5].map(i => { const currentWater = (personalData.waterLogs||{})[selectedDate] || 0; return (<button key={`waterbtn-${i}`} onClick={() => setPersonalData(p=>({...p, waterLogs: {...(p.waterLogs||{}), [selectedDate]: i}}))} className={`flex-1 h-10 rounded-2xl transition-transform active:scale-90 flex items-center justify-center ${currentWater >= i ? 'bg-blue-400 shadow-md text-white' : 'bg-slate-50 border border-slate-100 text-slate-300'}`}><Droplet size={16} fill={currentWater >= i ? 'white' : 'none'} /></button>) })}</div>
-                          </div>
-                          <div className="border-t border-slate-50 pt-6">
-                             <div className="flex items-center justify-between mb-4"><span className="text-sm font-bold text-slate-600 italic tracking-tight">Horario de Sueño</span><span className="text-xs font-bold text-indigo-400">{(personalData.sleepLogs||{})[selectedDate] || calculateSleepHours(personalData.sleep?.start, personalData.sleep?.end)} hrs</span></div>
-                             <div className="flex gap-3">
-                               <input type="time" value={personalData.sleep?.start || '22:00'} onChange={(e)=>handleSleepChange('start', e.target.value)} className="flex-1 text-xs font-bold text-slate-600 bg-slate-50 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-100 text-center" />
-                               <input type="time" value={personalData.sleep?.end || '06:00'} onChange={(e)=>handleSleepChange('end', e.target.value)} className="flex-1 text-xs font-bold text-slate-600 bg-slate-50 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-100 text-center" />
-                             </div>
-                          </div>
-                          <div className="border-t border-slate-50 pt-6">
-                             <div className="flex items-center justify-between mb-4"><span className="text-sm font-bold text-slate-600 italic tracking-tight">Pasos</span><Footprints size={16} className="text-emerald-400"/></div>
-                             <div className="relative">
-                               <input type="number" value={(personalData.stepsLogs||{})[selectedDate] || ''} onChange={(e)=>setPersonalData(p=>({...p, stepsLogs: {...(p.stepsLogs||{}), [selectedDate]: parseInt(e.target.value)||0}}))} placeholder="Ej. 8000" className="w-full text-sm font-bold text-slate-600 bg-slate-50 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-100 text-center" />
-                             </div>
-                          </div>
-                       </div>
-                    </section>
                     <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg text-center cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setShowGymModal(true)}>
                        <div className="w-16 h-16 bg-[#FF9B85] rounded-full mx-auto flex items-center justify-center text-white mb-4 shadow-lg"><Dumbbell size={24} /></div>
                        <h3 className="text-sm font-bold text-slate-700 italic mb-2">Entrenamiento del Día</h3>
@@ -649,124 +1035,6 @@
                            <div className="bg-slate-50/50 p-6 rounded-[2.5rem] border border-slate-100 flex flex-col"><h4 className="text-[10px] font-bold uppercase text-[#FF9B85] tracking-widest mb-3 flex items-center gap-2"><Flame size={14}/> Snacks / Antojos</h4><textarea value={currentMeals.snacks} onChange={(e) => setMeal('snacks', e.target.value)} placeholder="Almendras, un chocolate..." className="flex-1 w-full bg-transparent resize-none focus:outline-none text-sm italic text-slate-600 custom-scrollbar"></textarea></div>
                         </div>
                      </section>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {viewMode === 'personal' && (
-              <div className="flex-1 p-10 overflow-y-auto max-w-7xl mx-auto w-full custom-scrollbar">
-                <header className="mb-10 flex justify-between items-end border-b border-theme-surface pb-8">
-                  <div><p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mb-2 italic">Mi Diario</p><h2 className="text-6xl font-serif font-bold text-theme-dark italic tracking-tighter">Personal & Trackers</h2></div>
-                </header>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  <div className="lg:col-span-2 space-y-8">
-                    <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg relative overflow-hidden">
-                       <div className="flex justify-between items-center mb-8 relative z-10">
-                          <h3 className="text-xs font-bold uppercase text-theme-dark tracking-[0.3em] flex items-center gap-3 italic"><TrendingUp size={18} /> Bujo Analytics</h3>
-                          <div className="flex gap-2 bg-slate-50 p-1 rounded-full"><button onClick={()=>setChartRange('week')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${chartRange==='week'?'bg-white shadow-sm text-theme-dark':'text-slate-400'}`}>Semana</button><button onClick={()=>setChartRange('month')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${chartRange==='month'?'bg-white shadow-sm text-theme-dark':'text-slate-400'}`}>Mes</button></div>
-                       </div>
-                       <div className="flex gap-10 overflow-x-auto custom-scrollbar pb-4 relative z-10">
-                          <div className="min-w-[300px] flex-1">
-                             <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Mood Chart (Humor)</p>
-                             <div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">
-                                {chartDays.map((d, i) => { 
-                                   const m = (personalData.moodLogs||{})[d] || 0; 
-                                   const heights = {0: '10%', 1: '30%', 2: '60%', 3: '90%'}; 
-                                   const colors = {0: 'transparent', 1: 'var(--theme-dark)', 2: 'var(--theme-sec)', 3: 'var(--theme-main)'}; 
-                                   return (
-                                     <div key={`mood-${d}`} className="flex flex-col items-center gap-2 w-full">
-                                        <div className="w-full flex justify-center h-full items-end" title={`Mood: ${m}`}>
-                                           <div className="w-full max-w-[16px] rounded-t-sm transition-all shadow-sm" style={{height: heights[m] || '10%', backgroundColor: colors[m] || 'transparent'}}></div>
-                                        </div>
-                                        {chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}
-                                     </div>
-                                   ) 
-                                })}
-                             </div>
-                          </div>
-                          <div className="min-w-[300px] flex-1">
-                             <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Top Hábitos</p>
-                             <div className="space-y-4">
-                                {Object.keys(personalData.habitMatrix || {}).slice(0,3).map(habit => { 
-                                   const completions = weekDays.filter(d => (personalData.habitMatrix||{})[habit]?.[d]).length; 
-                                   const percent = Math.round((completions/7)*100) || 0; 
-                                   return (
-                                     <div key={`prog-${habit}`}>
-                                        <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-1.5 italic">
-                                           <span className="truncate w-32">{habit}</span>
-                                           <span className="text-theme-main">{percent}%</span>
-                                        </div>
-                                        <div className="w-full h-2 bg-theme-surface rounded-full overflow-hidden shadow-inner">
-                                           <div className="h-full bg-theme-main transition-all rounded-full" style={{width: `${percent}%`}}></div>
-                                        </div>
-                                     </div>
-                                   ) 
-                                })}
-                                {Object.keys(personalData.habitMatrix || {}).length === 0 && <p className="text-[10px] text-slate-400 italic text-center mt-6">Añade hábitos en Config.</p>}
-                             </div>
-                          </div>
-                       </div>
-                    </section>
-                    <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg">
-                       <h3 className="text-xs font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2 italic"><ListChecks size={16} /> Habit Tracker Semanal</h3>
-                       <div className="overflow-x-auto">
-                          <table className="w-full border-separate border-spacing-2">
-                             <thead>
-                                <tr>
-                                   <th className="text-left text-[11px] font-bold text-slate-300 uppercase p-3 tracking-widest">Objetivo</th>
-                                   {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, idx) => (<th key={`${d}-${idx}`} className="text-center text-[11px] font-bold text-slate-300 p-3">{d}</th>))}
-                                </tr>
-                             </thead>
-                             <tbody>
-                                {Object.keys(personalData.habitMatrix || {}).map(habit => (
-                                   <tr key={habit}>
-                                      <td className="text-base font-semibold text-slate-600 p-3 italic">{habit}</td>
-                                      {[0,1,2,3,4,5,6].map(i => { 
-                                         const dayDate = new Date(); 
-                                         dayDate.setDate(dayDate.getDate() - dayDate.getDay() + (i + 1)); 
-                                         const dStr = dayDate.toISOString().split('T')[0]; 
-                                         const isActive = (personalData.habitMatrix||{})[habit]?.[dStr]; 
-                                         return (
-                                            <td key={`${habit}-${i}`} className="text-center p-2">
-                                               <button onClick={() => toggleMatrixHabit(habit, dStr)} className={`w-10 h-10 rounded-xl border-2 transition-all flex items-center justify-center ${isActive ? 'bg-theme-main border-transparent text-white shadow-lg scale-110' : 'bg-slate-50 border-slate-100 hover:border-theme-surface'}`}>
-                                                  {isActive && <Check size={18} />}
-                                               </button>
-                                            </td>
-                                         );
-                                      })}
-                                   </tr>
-                                ))}
-                             </tbody>
-                          </table>
-                       </div>
-                    </section>
-                  </div>
-                  <div className="space-y-8">
-                    <section className="bg-white p-10 rounded-[3.5rem] border border-theme-surface shadow-xl text-center">
-                       <h3 className="text-[11px] font-bold uppercase text-slate-300 mb-8 tracking-[0.4em] italic">Humor Hoy</h3>
-                       <div className="flex justify-center gap-5 mb-6">
-                          <button onClick={() => setMood(selectedDate, 3)} className={`p-5 rounded-[2rem] transition-all ${(personalData.moodLogs||{})[selectedDate] === 3 ? 'bg-theme-main text-white shadow-2xl scale-110' : 'bg-slate-50 text-slate-300 hover:bg-theme-surface'}`}><Smile size={36}/></button>
-                          <button onClick={() => setMood(selectedDate, 2)} className={`p-5 rounded-[2rem] transition-all ${(personalData.moodLogs||{})[selectedDate] === 2 ? 'bg-theme-sec text-white shadow-2xl scale-110' : 'bg-slate-50 text-slate-300 hover:bg-theme-surface'}`}><Meh size={36}/></button>
-                          <button onClick={() => setMood(selectedDate, 1)} className={`p-5 rounded-[2rem] transition-all ${(personalData.moodLogs||{})[selectedDate] === 1 ? 'bg-theme-dark text-white shadow-2xl scale-110' : 'bg-slate-50 text-slate-300 hover:bg-theme-surface'}`}><Frown size={36}/></button>
-                       </div>
-                    </section>
-                    <section className="bg-theme-surface/50 p-10 rounded-[3.5rem] border border-theme-surface shadow-lg h-[400px] flex flex-col">
-                       <h3 className="text-[11px] font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2 italic"><ClipboardList size={14}/> Notas Personales</h3>
-                       <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
-                          {safeTasksList.map(t => (
-                             <div key={t.id} onClick={() => setPersonalData(p => ({...p, tasks: safeTasksList.map(x => x.id === t.id ? {...x, done: !x.done} : x)}))} className="flex items-center gap-3 p-3 bg-white rounded-[1.5rem] cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-theme-surface group">
-                                {t.done ? <CheckCircle2 size={18} className="text-theme-main" /> : <Circle size={18} className="text-slate-300 group-hover:text-theme-main" />}
-                                <span className={`text-[13px] italic flex-1 ${t.done ? 'line-through text-slate-400 opacity-50' : 'text-slate-700 font-semibold'}`}>{t.text}</span>
-                                <button onClick={(e) => { e.stopPropagation(); setPersonalData(p=>({...p, tasks: safeTasksList.filter(x=>x.id !== t.id)})); }} className="opacity-0 group-hover:opacity-100 text-red-200 hover:text-red-400"><Trash2 size={14}/></button>
-                             </div>
-                          ))}
-                          {safeTasksList.length === 0 && <p className="text-center text-xs text-slate-400 italic py-10">Agrega una nueva nota.</p>}
-                       </div>
-                       <div className="mt-4">
-                          <input type="text" placeholder="+ Nueva nota..." className="w-full p-4 bg-white rounded-[2rem] text-sm focus:outline-none italic transition-all shadow-sm border border-transparent focus:border-theme-main text-slate-600" onKeyDown={(e) => { if(e.key === 'Enter' && e.target.value.trim()) { setPersonalData(p => ({...p, tasks: [...safeTasksList, {id: Date.now(), text: e.target.value.trim(), done: false}]})); e.target.value = ''; } }} />
-                       </div>
-                    </section>
                   </div>
                 </div>
               </div>
@@ -895,10 +1163,10 @@
                    </section>
 
                    <section className="bg-white p-10 rounded-[4rem] border border-theme-surface shadow-xl">
-                      <h3 className="font-bold text-[12px] uppercase tracking-[0.5em] text-theme-dark mb-6 flex items-center gap-4 italic"><Quote size={20}/> Frases y Hábitos</h3>
+                      <h3 className="font-bold text-[12px] uppercase tracking-[0.5em] text-theme-dark mb-6 flex items-center gap-4 italic"><Quote size={20}/> Frases Inspiradoras</h3>
                       <div className="space-y-6">
                         <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tus Frases Inspiradoras</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tus Frases Diarias</p>
                           <div className="flex gap-4">
                             <input type="text" value={newQuote} onChange={(e) => setNewQuote(e.target.value)} placeholder="Nueva frase..." className="flex-1 p-4 bg-slate-50 rounded-2xl text-sm focus:outline-none border border-transparent focus:border-theme-main italic shadow-inner" />
                             <button onClick={() => { if(newQuote.trim()) { setPersonalData(p => ({...p, quotes: [...(p.quotes||[]), newQuote.trim()]})); setNewQuote(''); showToast("Frase añadida"); } }} className="p-4 bg-theme-main text-white rounded-2xl font-bold shadow-md hover:scale-105"><Plus size={24}/></button>
@@ -910,13 +1178,6 @@
                                   {(personalData.quotes||[]).length > 1 && (<button onClick={() => setPersonalData(p => ({...p, quotes: (p.quotes||[]).filter((_, i) => i !== idx)}))} className="text-red-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12}/></button>)}
                                </div>
                              ))}
-                          </div>
-                        </div>
-                        <div className="pt-6 border-t border-slate-50">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Nuevos Hábitos para el Bujo</p>
-                          <div className="flex gap-4">
-                            <input type="text" id="newHabit" placeholder="Nuevo hábito (Ej. Meditar)..." className="flex-1 p-4 bg-slate-50 rounded-2xl text-sm focus:outline-none border border-transparent focus:border-theme-main italic shadow-inner" />
-                            <button onClick={() => { const inp = document.getElementById('newHabit'); addNewMatrixHabit(inp.value); inp.value = ''; }} className="p-4 bg-theme-sec text-white rounded-2xl font-bold shadow-md hover:scale-105"><Plus size={24}/></button>
                           </div>
                         </div>
                       </div>
@@ -966,7 +1227,7 @@
             )}
           </main>
 
-          {/* GYM TRACKER MODAL */}
+          {/* MODALES FLOTANTES */}
           {showGymModal && (
             <div className="fixed inset-0 z-[90] bg-slate-900/80 backdrop-blur-md flex items-end md:items-center justify-center animate-in slide-in-from-bottom duration-300">
                <div className="bg-[#FCF8FF] w-full max-w-lg h-[90vh] md:h-[85vh] rounded-t-[3rem] md:rounded-[3rem] shadow-2xl flex flex-col overflow-hidden relative">
@@ -981,7 +1242,6 @@
             </div>
           )}
 
-          {/* MODALES DE EDICIÓN Y GESTIÓN */}
           {editingGroup && (
             <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in">
                <div className="bg-white w-full max-w-sm p-8 rounded-[3rem] shadow-2xl">
