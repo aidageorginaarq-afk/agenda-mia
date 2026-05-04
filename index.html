@@ -109,12 +109,12 @@
       const [showEventModal, setShowEventModal] = useState({ show: false, date: null, text: '' });
       const [scheduleModal, setScheduleModal] = useState({ show: false, itemType: null, itemId: null, itemName: '', date: selectedDate });
       
-      // Modales de acciones
       const [showExpenseModal, setShowExpenseModal] = useState(false);
       const [showFixedModal, setShowFixedModal] = useState(false);
       const [showGymModal, setShowGymModal] = useState(false);
       const [showGroupModal, setShowGroupModal] = useState(false); 
       const [customExName, setCustomExName] = useState(''); 
+      
       const [showImportModal, setShowImportModal] = useState(false);
       const [importType, setImportType] = useState('topics'); 
       const [importText, setImportText] = useState("");
@@ -132,57 +132,75 @@
       const [manualEntry, setManualEntry] = useState({ topics: '', adas: '' });
       const [chartRange, setChartRange] = useState('week'); 
 
-      // --- PERSISTENCIA BLINDADA ---
+      // --- PERSISTENCIA BLINDADA V23 ---
       const [groups, setGroups] = useState(() => {
-        const saved = localStorage.getItem('bitacora_grupos_v22') || localStorage.getItem('bitacora_grupos_v21') || localStorage.getItem('bitacora_grupos_v20') || localStorage.getItem('bitacora_grupos_v19');
+        const saved = localStorage.getItem('bitacora_grupos_v23') || localStorage.getItem('bitacora_grupos_v22') || localStorage.getItem('bitacora_grupos_v21') || localStorage.getItem('bitacora_grupos_v20') || localStorage.getItem('bitacora_grupos_v19');
         if (saved) {
-          return JSON.parse(saved).map(g => {
-             let groupSchedule = g.schedule || [];
-             if (groupSchedule.length === 0 && g.days && g.days.length > 0) { groupSchedule = g.days.map(d => ({ day: d, time: g.time || '08:00' })); }
-             return { ...g, schedule: groupSchedule, topics: g.topics || [], adas: g.adas || [], sessions: g.sessions || [], tasks: g.tasks || [] };
-          });
+          try {
+             return JSON.parse(saved).map(g => {
+                let groupSchedule = g.schedule || [];
+                if (groupSchedule.length === 0 && g.days && g.days.length > 0) { groupSchedule = g.days.map(d => ({ day: d, time: g.time || '08:00' })); }
+                return { ...g, schedule: groupSchedule, topics: g.topics || [], adas: g.adas || [], sessions: g.sessions || [], tasks: g.tasks || [] };
+             });
+          } catch(e) { return []; }
         }
         return [{ id: 'G1', name: 'Grupo 101', subject: 'Diseño Urbano I', color: '#BE95C4', schedule: [{day: 'Lunes', time: '08:00'}, {day: 'Miércoles', time: '10:00'}], topics: [{ id: 1, title: 'Introducción al Urbanismo Sistémico', completed: false }], adas: [{ id: 101, title: 'ADA 1: Mapa Conceptual', completed: false }], sessions: [], tasks: [] }];
       });
 
       const [personalData, setPersonalData] = useState(() => {
-        const saved = localStorage.getItem('bitacora_personal_v22') || localStorage.getItem('bitacora_personal_v21') || localStorage.getItem('bitacora_personal_v20') || localStorage.getItem('bitacora_personal_v19');
+        const saved = localStorage.getItem('bitacora_personal_v23') || localStorage.getItem('bitacora_personal_v22') || localStorage.getItem('bitacora_personal_v21') || localStorage.getItem('bitacora_personal_v20') || localStorage.getItem('bitacora_personal_v19');
         const baseData = {
           appTitle: 'Agenda - Bitácora', theme: 'jacaranda', habits: { exercise: false }, 
-          waterLogs: {}, sleepLogs: {}, stepsLogs: {}, sleep: { start: '22:00', end: '06:00' }, screenTime: 4, tasks: [],
+          waterLogs: {}, sleepLogs: {}, stepsLogs: {}, sleep: { start: '22:00', end: '06:00' }, 
+          tasks: [],
           quotes: ["La arquitectura es música congelada."], activeQuoteIndex: 0,
           habitMatrix: {}, moodLogs: {}, calendarEvents: {},
           finance: { accounts: [{ id: 'A1', name: 'Banorte', type: 'Crédito', cutDate: '15', payDate: '05' }, { id: 'A2', name: 'Efectivo (Billetera)', type: 'Efectivo', cutDate: '-', payDate: '-' }], transactions: [], fixedPayments: [] },
           health: { meals: {}, workouts: {} }
         };
+        
         if (saved) {
-           const parsed = JSON.parse(saved);
-           const safeFinance = { accounts: parsed.finance?.accounts || baseData.finance.accounts, transactions: parsed.finance?.transactions || [], fixedPayments: parsed.finance?.fixedPayments || [] };
-           if (!safeFinance.accounts.some(a => a.name.includes('Efectivo'))) { safeFinance.accounts.push({ id: 'A2', name: 'Efectivo (Billetera)', type: 'Efectivo', cutDate: '-', payDate: '-' }); }
-           
-           return { 
-             ...baseData, 
-             ...parsed, 
-             finance: safeFinance, 
-             appTitle: parsed.appTitle || 'Agenda - Bitácora',
-             waterLogs: parsed.waterLogs || {}, 
-             sleepLogs: parsed.sleepLogs || {}, 
-             stepsLogs: parsed.stepsLogs || {}, 
-             health: parsed.health || { meals: {}, workouts: {} }, 
-             tasks: parsed.tasks || [],
-             moodLogs: parsed.moodLogs || {},
-             habitMatrix: parsed.habitMatrix || {},
-             quotes: parsed.quotes || ["La arquitectura es música congelada."],
-             calendarEvents: parsed.calendarEvents || {}
-           };
+           try {
+              const parsed = JSON.parse(saved);
+              const safeFinance = { 
+                 accounts: Array.isArray(parsed.finance?.accounts) ? parsed.finance.accounts : baseData.finance.accounts, 
+                 transactions: Array.isArray(parsed.finance?.transactions) ? parsed.finance.transactions : [], 
+                 fixedPayments: Array.isArray(parsed.finance?.fixedPayments) ? parsed.finance.fixedPayments : [] 
+              };
+              if (!safeFinance.accounts.some(a => a?.name?.includes('Efectivo'))) { 
+                 safeFinance.accounts.push({ id: 'A2', name: 'Efectivo (Billetera)', type: 'Efectivo', cutDate: '-', payDate: '-' }); 
+              }
+              
+              // BLINDAJE EXTREMO PARA TAREAS Y FRASES
+              const safeTasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
+              const safeQuotes = Array.isArray(parsed.quotes) && parsed.quotes.length > 0 ? parsed.quotes : baseData.quotes;
+
+              return { 
+                ...baseData, 
+                ...parsed, 
+                finance: safeFinance, 
+                appTitle: parsed.appTitle || 'Agenda - Bitácora',
+                waterLogs: parsed.waterLogs || {}, 
+                sleepLogs: parsed.sleepLogs || {}, 
+                stepsLogs: parsed.stepsLogs || {}, 
+                health: parsed.health || { meals: {}, workouts: {} }, 
+                tasks: safeTasks,
+                moodLogs: parsed.moodLogs || {},
+                habitMatrix: parsed.habitMatrix || {},
+                quotes: safeQuotes,
+                calendarEvents: parsed.calendarEvents || {}
+              };
+           } catch(e) {
+              return baseData;
+           }
         }
         return baseData;
       });
 
       const [activeGroupId, setActiveGroupId] = useState(groups[0]?.id);
 
-      useEffect(() => { localStorage.setItem('bitacora_grupos_v22', JSON.stringify(groups)); }, [groups]);
-      useEffect(() => { localStorage.setItem('bitacora_personal_v22', JSON.stringify(personalData)); }, [personalData]);
+      useEffect(() => { localStorage.setItem('bitacora_grupos_v23', JSON.stringify(groups)); }, [groups]);
+      useEffect(() => { localStorage.setItem('bitacora_personal_v23', JSON.stringify(personalData)); }, [personalData]);
       useEffect(() => { document.title = personalData.appTitle || 'Agenda - Bitácora'; }, [personalData.appTitle]);
 
       const activeTheme = THEMES[personalData.theme || 'jacaranda'];
@@ -242,7 +260,7 @@
 
       const handleSleepChange = (type, val) => {
          setPersonalData(p => {
-            const newSleep = { ...p.sleep, [type]: val };
+            const newSleep = { ...(p.sleep||{}), [type]: val };
             const hrs = calculateSleepHours(newSleep.start, newSleep.end);
             return { ...p, sleep: newSleep, sleepLogs: { ...(p.sleepLogs || {}), [selectedDate]: hrs } };
          });
@@ -295,7 +313,7 @@
          showToast(`${lines.length} elementos importados`);
       };
 
-      // SMART SYNC HANDLER (BLINDADO)
+      // SMART SYNC HANDLER 
       const handleSmartSync = (e, type) => {
          const file = e.target.files[0];
          if (!file) return;
@@ -358,17 +376,19 @@
       const changeTheme = (themeName) => { setPersonalData(prev => ({...prev, theme: themeName})); showToast(`Tema ${themeName} aplicado`); };
       const handleImageUpload = (e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (event) => { setCoverImage(event.target.result); localStorage.setItem('bitacora_cover_img', event.target.result); showToast('Fondo guardado'); }; reader.readAsDataURL(file); } };
 
+      const safeQuotesList = Array.isArray(personalData.quotes) && personalData.quotes.length > 0 ? personalData.quotes : ["La arquitectura es música congelada."];
+      const safeTasksList = Array.isArray(personalData.tasks) ? personalData.tasks : [];
+
       const WelcomeCover = () => {
-         const quotesList = personalData.quotes || ["La arquitectura es música congelada."];
-         const currentQuoteIndex = (personalData.activeQuoteIndex || 0) < quotesList.length ? (personalData.activeQuoteIndex || 0) : 0;
+         const currentQuoteIndex = (personalData.activeQuoteIndex || 0) < safeQuotesList.length ? (personalData.activeQuoteIndex || 0) : 0;
          return (
             <div className="h-full w-full flex flex-col items-center justify-center p-12 relative overflow-hidden bg-theme-bg">
               {coverImage ? (<div className="absolute inset-0 z-0 transition-opacity duration-1000 opacity-60"><img src={coverImage} alt="Cover" className="w-full h-full object-cover" /><div className="absolute inset-0 bg-white/30 backdrop-blur-sm"></div></div>) : <div className="absolute inset-0 z-0 opacity-10 bg-gradient-to-br from-theme-main to-theme-sec" />}
               <div className="max-w-4xl w-full text-center z-10 animate-in fade-in zoom-in duration-1000">
                 <div className="mb-10 inline-flex p-8 bg-white/90 backdrop-blur-md rounded-full shadow-2xl border border-white text-theme-main"><Flower2 size={60} strokeWidth={1.5} /></div>
                 <h1 className="text-7xl md:text-[8rem] font-serif font-bold text-theme-dark italic mb-10 tracking-tighter drop-shadow-md">{personalData.appTitle || 'Agenda - Bitácora'}</h1>
-                <div className="mb-20 px-4 min-h-[100px] cursor-pointer" onClick={() => setPersonalData(prev => ({...prev, activeQuoteIndex: ((prev.activeQuoteIndex || 0) + 1) % quotesList.length}))} title="Haz clic para ver otra frase">
-                   <p className="text-3xl md:text-5xl font-serif italic text-theme-dark leading-tight max-w-4xl mx-auto drop-shadow-sm">"{quotesList[currentQuoteIndex]}"</p>
+                <div className="mb-20 px-4 min-h-[100px] cursor-pointer" onClick={() => setPersonalData(prev => ({...prev, activeQuoteIndex: ((prev.activeQuoteIndex || 0) + 1) % safeQuotesList.length}))} title="Haz clic para ver otra frase">
+                   <p className="text-3xl md:text-5xl font-serif italic text-theme-dark leading-tight max-w-4xl mx-auto drop-shadow-sm">"{safeQuotesList[currentQuoteIndex]}"</p>
                 </div>
                 <div className="flex flex-col items-center gap-6">
                   <button onClick={() => setViewMode('daily')} className="group relative inline-flex items-center gap-6 bg-gradient-to-r from-theme-main to-theme-sec text-white px-16 py-7 rounded-full font-bold text-lg tracking-[0.3em] uppercase shadow-2xl hover:scale-105 active:scale-95 transition-all ring-offset-4 ring-8 ring-theme-surface"><span>ENTRAR</span><ChevronRight size={24} className="group-hover:translate-x-2 transition-transform" /></button>
@@ -590,10 +610,30 @@
                       <div className="flex gap-2 bg-slate-50 p-1 rounded-full"><button onClick={()=>setChartRange('week')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${chartRange==='week'?'bg-white shadow-sm text-theme-dark':'text-slate-400'}`}>Semana</button><button onClick={()=>setChartRange('month')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${chartRange==='month'?'bg-white shadow-sm text-theme-dark':'text-slate-400'}`}>Mes</button></div>
                    </div>
                    <div className="flex gap-8 overflow-x-auto custom-scrollbar pb-4 relative z-10">
-                      <div className="min-w-[300px] flex-1"><p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Hidratación</p><div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">{chartDays.map((d, i) => { const w = (personalData.waterLogs||{})[d] || 0; return (<div key={`water-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: ${w} vasos`}><div className="w-full max-w-[16px] bg-blue-300 rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (w/5)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}</div></div>
-                      <div className="min-w-[300px] flex-1"><p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Horas de Sueño</p><div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">{chartDays.map((d, i) => { const h = (personalData.sleepLogs||{})[d] || 0; return (<div key={`sleep-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: ${h} horas`}><div className="w-full max-w-[16px] bg-indigo-300 rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (h/12)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}</div></div>
-                      <div className="min-w-[300px] flex-1"><p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Energía Física (Gym)</p><div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">{chartDays.map((d, i) => { const energy = (personalData.health?.workouts || {})[d]?.energy || 0; return (<div key={`energy-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: Nivel ${energy}`}><div className="w-full max-w-[16px] bg-[#FF9B85] rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (energy/5)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}</div></div>
-                      <div className="min-w-[300px] flex-1"><p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Pasos</p><div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">{chartDays.map((d, i) => { const steps = (personalData.stepsLogs||{})[d] || 0; return (<div key={`steps-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: ${steps} pasos`}><div className="w-full max-w-[16px] bg-emerald-300 rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (steps/10000)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}</div></div>
+                      <div className="min-w-[300px] flex-1">
+                         <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Hidratación</p>
+                         <div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">
+                            {chartDays.map((d, i) => { const w = (personalData.waterLogs||{})[d] || 0; return (<div key={`water-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: ${w} vasos`}><div className="w-full max-w-[16px] bg-blue-300 rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (w/5)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}
+                         </div>
+                      </div>
+                      <div className="min-w-[300px] flex-1">
+                         <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Horas de Sueño</p>
+                         <div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">
+                            {chartDays.map((d, i) => { const h = (personalData.sleepLogs||{})[d] || 0; return (<div key={`sleep-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: ${h} horas`}><div className="w-full max-w-[16px] bg-indigo-300 rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (h/12)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}
+                         </div>
+                      </div>
+                      <div className="min-w-[300px] flex-1">
+                         <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Energía Física (Gym)</p>
+                         <div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">
+                            {chartDays.map((d, i) => { const energy = (personalData.health?.workouts || {})[d]?.energy || 0; return (<div key={`energy-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: Nivel ${energy}`}><div className="w-full max-w-[16px] bg-[#FF9B85] rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (energy/5)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}
+                         </div>
+                      </div>
+                      <div className="min-w-[300px] flex-1">
+                         <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Pasos</p>
+                         <div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">
+                            {chartDays.map((d, i) => { const steps = (personalData.stepsLogs||{})[d] || 0; return (<div key={`steps-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: ${steps} pasos`}><div className="w-full max-w-[16px] bg-emerald-300 rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (steps/10000)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}
+                         </div>
+                      </div>
                    </div>
                 </section>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -658,13 +698,39 @@
                           <div className="min-w-[300px] flex-1">
                              <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Mood Chart (Humor)</p>
                              <div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">
-                                {chartDays.map((d, i) => { const m = (personalData.moodLogs||{})[d] || 0; const heights = {0: '10%', 1: '30%', 2: '60%', 3: '90%'}; const colors = {0: 'transparent', 1: 'var(--theme-dark)', 2: 'var(--theme-sec)', 3: 'var(--theme-main)'}; return (<div key={`mood-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`Mood: ${m}`}><div className="w-full max-w-[16px] rounded-t-sm transition-all shadow-sm" style={{height: heights[m], backgroundColor: colors[m]}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}
+                                {chartDays.map((d, i) => { 
+                                   const m = (personalData.moodLogs||{})[d] || 0; 
+                                   const heights = {0: '10%', 1: '30%', 2: '60%', 3: '90%'}; 
+                                   const colors = {0: 'transparent', 1: 'var(--theme-dark)', 2: 'var(--theme-sec)', 3: 'var(--theme-main)'}; 
+                                   return (
+                                     <div key={`mood-${d}`} className="flex flex-col items-center gap-2 w-full">
+                                        <div className="w-full flex justify-center h-full items-end" title={`Mood: ${m}`}>
+                                           <div className="w-full max-w-[16px] rounded-t-sm transition-all shadow-sm" style={{height: heights[m] || '10%', backgroundColor: colors[m] || 'transparent'}}></div>
+                                        </div>
+                                        {chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}
+                                     </div>
+                                   ) 
+                                })}
                              </div>
                           </div>
                           <div className="min-w-[300px] flex-1">
                              <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Top Hábitos</p>
                              <div className="space-y-4">
-                                {Object.keys(personalData.habitMatrix || {}).slice(0,3).map(habit => { const completions = weekDays.filter(d => (personalData.habitMatrix||{})[habit]?.[d]).length; const percent = Math.round((completions/7)*100); return (<div key={`prog-${habit}`}><div className="flex justify-between text-[10px] font-bold text-slate-500 mb-1.5 italic"><span className="truncate w-32">{habit}</span><span className="text-theme-main">{percent}%</span></div><div className="w-full h-2 bg-theme-surface rounded-full overflow-hidden shadow-inner"><div className="h-full bg-theme-main transition-all rounded-full" style={{width: `${percent}%`}}></div></div></div>) })}
+                                {Object.keys(personalData.habitMatrix || {}).slice(0,3).map(habit => { 
+                                   const completions = weekDays.filter(d => (personalData.habitMatrix||{})[habit]?.[d]).length; 
+                                   const percent = Math.round((completions/7)*100) || 0; 
+                                   return (
+                                     <div key={`prog-${habit}`}>
+                                        <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-1.5 italic">
+                                           <span className="truncate w-32">{habit}</span>
+                                           <span className="text-theme-main">{percent}%</span>
+                                        </div>
+                                        <div className="w-full h-2 bg-theme-surface rounded-full overflow-hidden shadow-inner">
+                                           <div className="h-full bg-theme-main transition-all rounded-full" style={{width: `${percent}%`}}></div>
+                                        </div>
+                                     </div>
+                                   ) 
+                                })}
                                 {Object.keys(personalData.habitMatrix || {}).length === 0 && <p className="text-[10px] text-slate-400 italic text-center mt-6">Añade hábitos en Config.</p>}
                              </div>
                           </div>
@@ -672,7 +738,36 @@
                     </section>
                     <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg">
                        <h3 className="text-xs font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2 italic"><ListChecks size={16} /> Habit Tracker Semanal</h3>
-                       <div className="overflow-x-auto"><table className="w-full border-separate border-spacing-2"><thead><tr><th className="text-left text-[11px] font-bold text-slate-300 uppercase p-3 tracking-widest">Objetivo</th>{['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, idx) => (<th key={`${d}-${idx}`} className="text-center text-[11px] font-bold text-slate-300 p-3">{d}</th>))}</tr></thead><tbody>{Object.keys(personalData.habitMatrix || {}).map(habit => (<tr key={habit}><td className="text-base font-semibold text-slate-600 p-3 italic">{habit}</td>{[0,1,2,3,4,5,6].map(i => { const dayDate = new Date(); dayDate.setDate(dayDate.getDate() - dayDate.getDay() + (i + 1)); const dStr = dayDate.toISOString().split('T')[0]; const isActive = (personalData.habitMatrix||{})[habit]?.[dStr]; return (<td key={`${habit}-${i}`} className="text-center p-2"><button onClick={() => toggleMatrixHabit(habit, dStr)} className={`w-10 h-10 rounded-xl border-2 transition-all flex items-center justify-center ${isActive ? 'bg-theme-main border-transparent text-white shadow-lg scale-110' : 'bg-slate-50 border-slate-100 hover:border-theme-surface'}`}>{isActive && <Check size={18} />}</button></td>);})}</tr>))}</tbody></table></div>
+                       <div className="overflow-x-auto">
+                          <table className="w-full border-separate border-spacing-2">
+                             <thead>
+                                <tr>
+                                   <th className="text-left text-[11px] font-bold text-slate-300 uppercase p-3 tracking-widest">Objetivo</th>
+                                   {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, idx) => (<th key={`${d}-${idx}`} className="text-center text-[11px] font-bold text-slate-300 p-3">{d}</th>))}
+                                </tr>
+                             </thead>
+                             <tbody>
+                                {Object.keys(personalData.habitMatrix || {}).map(habit => (
+                                   <tr key={habit}>
+                                      <td className="text-base font-semibold text-slate-600 p-3 italic">{habit}</td>
+                                      {[0,1,2,3,4,5,6].map(i => { 
+                                         const dayDate = new Date(); 
+                                         dayDate.setDate(dayDate.getDate() - dayDate.getDay() + (i + 1)); 
+                                         const dStr = dayDate.toISOString().split('T')[0]; 
+                                         const isActive = (personalData.habitMatrix||{})[habit]?.[dStr]; 
+                                         return (
+                                            <td key={`${habit}-${i}`} className="text-center p-2">
+                                               <button onClick={() => toggleMatrixHabit(habit, dStr)} className={`w-10 h-10 rounded-xl border-2 transition-all flex items-center justify-center ${isActive ? 'bg-theme-main border-transparent text-white shadow-lg scale-110' : 'bg-slate-50 border-slate-100 hover:border-theme-surface'}`}>
+                                                  {isActive && <Check size={18} />}
+                                               </button>
+                                            </td>
+                                         );
+                                      })}
+                                   </tr>
+                                ))}
+                             </tbody>
+                          </table>
+                       </div>
                     </section>
                   </div>
                   <div className="space-y-8">
@@ -687,10 +782,18 @@
                     <section className="bg-theme-surface/50 p-10 rounded-[3.5rem] border border-theme-surface shadow-lg h-[400px] flex flex-col">
                        <h3 className="text-[11px] font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2 italic"><ClipboardList size={14}/> Notas Personales</h3>
                        <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
-                          {(personalData.tasks || []).map(t => (<div key={t.id} onClick={() => setPersonalData(p => ({...p, tasks: (p.tasks||[]).map(x => x.id === t.id ? {...x, done: !x.done} : x)}))} className="flex items-center gap-3 p-3 bg-white rounded-[1.5rem] cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-theme-surface group">{t.done ? <CheckCircle2 size={18} className="text-theme-main" /> : <Circle size={18} className="text-slate-300 group-hover:text-theme-main" />}<span className={`text-[13px] italic flex-1 ${t.done ? 'line-through text-slate-400 opacity-50' : 'text-slate-700 font-semibold'}`}>{t.text}</span><button onClick={(e) => { e.stopPropagation(); setPersonalData(p=>({...p, tasks: (p.tasks||[]).filter(x=>x.id !== t.id)})); }} className="opacity-0 group-hover:opacity-100 text-red-200 hover:text-red-400"><Trash2 size={14}/></button></div>))}
-                          {(personalData.tasks || []).length === 0 && <p className="text-center text-xs text-slate-400 italic py-10">Agrega una nueva nota.</p>}
+                          {safeTasksList.map(t => (
+                             <div key={t.id} onClick={() => setPersonalData(p => ({...p, tasks: safeTasksList.map(x => x.id === t.id ? {...x, done: !x.done} : x)}))} className="flex items-center gap-3 p-3 bg-white rounded-[1.5rem] cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-theme-surface group">
+                                {t.done ? <CheckCircle2 size={18} className="text-theme-main" /> : <Circle size={18} className="text-slate-300 group-hover:text-theme-main" />}
+                                <span className={`text-[13px] italic flex-1 ${t.done ? 'line-through text-slate-400 opacity-50' : 'text-slate-700 font-semibold'}`}>{t.text}</span>
+                                <button onClick={(e) => { e.stopPropagation(); setPersonalData(p=>({...p, tasks: safeTasksList.filter(x=>x.id !== t.id)})); }} className="opacity-0 group-hover:opacity-100 text-red-200 hover:text-red-400"><Trash2 size={14}/></button>
+                             </div>
+                          ))}
+                          {safeTasksList.length === 0 && <p className="text-center text-xs text-slate-400 italic py-10">Agrega una nueva nota.</p>}
                        </div>
-                       <div className="mt-4"><input type="text" placeholder="+ Nueva nota..." className="w-full p-4 bg-white rounded-[2rem] text-sm focus:outline-none italic transition-all shadow-sm border border-transparent focus:border-theme-main text-slate-600" onKeyDown={(e) => { if(e.key === 'Enter' && e.target.value.trim()) { setPersonalData(p => ({...p, tasks: [...(p.tasks||[]), {id: Date.now(), text: e.target.value, done: false}]})); e.target.value = ''; } }} /></div>
+                       <div className="mt-4">
+                          <input type="text" placeholder="+ Nueva nota..." className="w-full p-4 bg-white rounded-[2rem] text-sm focus:outline-none italic transition-all shadow-sm border border-transparent focus:border-theme-main text-slate-600" onKeyDown={(e) => { if(e.key === 'Enter' && e.target.value.trim()) { setPersonalData(p => ({...p, tasks: [...safeTasksList, {id: Date.now(), text: e.target.value.trim(), done: false}]})); e.target.value = ''; } }} />
+                       </div>
                     </section>
                   </div>
                 </div>
