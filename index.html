@@ -520,6 +520,7 @@
       const addFixedPayment = (name, amount, totalMonths, currentMonth, accountId) => { setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, fixedPayments: [...(prev.finance?.fixedPayments || []), { id: Date.now(), name, amount: parseFloat(amount), totalMonths: parseInt(totalMonths), currentMonth: parseInt(currentMonth), accountId }] } })); showToast("Pago añadido"); };
       const toggleVerifyTx = (txId) => setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, transactions: (prev.finance?.transactions || []).map(t => t.id === txId ? { ...t, verified: !t.verified } : t) } }));
       const incrementFixedMonth = (id) => setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, fixedPayments: (prev.finance?.fixedPayments || []).map(f => f.id === id ? { ...f, currentMonth: Math.min(f.totalMonths, f.currentMonth + 1) } : f ) } }));
+      const toggleAccountPaid = (accId) => setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, accounts: (prev.finance?.accounts || []).map(a => a.id === accId ? { ...a, paid: !a.paid } : a) } }));
       const accountSummaries = useMemo(() => { return (personalData.finance?.accounts || []).map(acc => { const variableTotal = (personalData.finance?.transactions || []).filter(t => t.accountId === acc.id).reduce((sum, t) => sum + t.amount, 0); const fixedTotal = (personalData.finance?.fixedPayments || []).filter(f => f.accountId === acc.id).reduce((sum, f) => sum + f.amount, 0); return { ...acc, variableTotal, fixedTotal, total: variableTotal + fixedTotal }; }); }, [personalData.finance]);
       const grandTotal = accountSummaries.reduce((sum, acc) => sum + acc.total, 0);
 
@@ -1041,7 +1042,26 @@
                    <h3 className="text-xs font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2"><PieChart size={16}/> Concentrado de Pagos por Cuenta</h3>
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {accountSummaries.map(summary => (
-                         <div key={summary.id} className="bg-white p-6 rounded-[2.5rem] border border-theme-surface shadow-xl relative overflow-hidden group"><div className="absolute -right-6 -top-6 w-24 h-24 bg-theme-surface rounded-full opacity-20 group-hover:scale-150 transition-transform"></div><div className="flex justify-between items-center mb-6 relative z-10"><h4 className="font-serif text-2xl font-bold text-theme-dark italic">{summary.name}</h4><span className="text-[9px] font-bold text-theme-main bg-theme-surface px-3 py-1 rounded-full uppercase">Corte: {summary.cutDate} | Pago: {summary.payDate}</span></div><div className="space-y-3 mb-6 relative z-10"><div className="flex justify-between items-center text-xs"><span className="text-slate-400 font-bold uppercase tracking-wider">Variables</span><span className="font-semibold text-slate-600">{formatMoney(summary.variableTotal)}</span></div><div className="flex justify-between items-center text-xs"><span className="text-slate-400 font-bold uppercase tracking-wider">Fijos / MSI</span><span className="font-semibold text-slate-600">{formatMoney(summary.fixedTotal)}</span></div></div><div className="pt-4 border-t border-slate-50 flex justify-between items-end relative z-10"><span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Total a Pagar</span><span className="text-3xl font-serif font-bold text-theme-main italic">{formatMoney(summary.total)}</span></div></div>
+                         <div key={summary.id} className={`bg-white p-6 rounded-[2.5rem] border ${summary.paid ? 'border-emerald-100 opacity-70' : 'border-theme-surface'} shadow-xl relative overflow-hidden group`}>
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-theme-surface rounded-full opacity-20 group-hover:scale-150 transition-transform"></div>
+                            <div className="flex justify-between items-start mb-6 relative z-10">
+                               <div className="flex items-center gap-3">
+                                  <button onClick={() => toggleAccountPaid(summary.id)} className={`transition-all ${summary.paid ? 'text-emerald-500 scale-110' : 'text-slate-200 hover:text-emerald-300'}`}>
+                                     {summary.paid ? <CheckCircle2 size={24}/> : <Circle size={24}/>}
+                                  </button>
+                                  <h4 className={`font-serif text-2xl font-bold italic ${summary.paid ? 'text-slate-400 line-through' : 'text-theme-dark'}`}>{summary.name}</h4>
+                               </div>
+                               <span className={`text-[9px] font-bold px-3 py-1 rounded-full uppercase ${summary.paid ? 'bg-emerald-50 text-emerald-600' : 'bg-theme-surface text-theme-main'}`}>Corte: {summary.cutDate} | Pago: {summary.payDate}</span>
+                            </div>
+                            <div className="space-y-3 mb-6 relative z-10">
+                               <div className="flex justify-between items-center text-xs"><span className="text-slate-400 font-bold uppercase tracking-wider">Variables</span><span className="font-semibold text-slate-600">{formatMoney(summary.variableTotal)}</span></div>
+                               <div className="flex justify-between items-center text-xs"><span className="text-slate-400 font-bold uppercase tracking-wider">Fijos / MSI</span><span className="font-semibold text-slate-600">{formatMoney(summary.fixedTotal)}</span></div>
+                            </div>
+                            <div className="pt-4 border-t border-slate-50 flex justify-between items-end relative z-10">
+                               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Total a Pagar</span>
+                               <span className="text-3xl font-serif font-bold text-theme-main italic">{formatMoney(summary.total)}</span>
+                            </div>
+                         </div>
                       ))}
                    </div>
                 </section>
@@ -1063,7 +1083,17 @@
                             <table className="w-full text-left">
                               <thead><tr className="text-[9px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200"><th className="pb-3 px-3">Cuenta / Tarjeta</th><th className="pb-3 px-3 text-right">Gastos Diarios (Var)</th><th className="pb-3 px-3 text-right">Pagos Fijos (MSI)</th><th className="pb-3 px-3 text-right text-theme-dark">Total a Pagar</th></tr></thead>
                               <tbody>
-                                {accountSummaries.map(acc => (<tr key={`sum-${acc.id}`} className="border-b border-slate-100 last:border-0"><td className="py-3 px-3 text-xs font-bold text-slate-700">{acc.name}</td><td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.variableTotal)}</td><td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.fixedTotal)}</td><td className="py-3 px-3 text-right text-sm font-bold text-theme-main">{formatMoney(acc.total)}</td></tr>))}
+                                {accountSummaries.map(acc => (
+                                  <tr key={`sum-${acc.id}`} className={`border-b border-slate-100 last:border-0 ${acc.paid ? 'opacity-50' : ''}`}>
+                                    <td className="py-3 px-3 text-xs font-bold text-slate-700 flex items-center gap-2">
+                                       {acc.paid && <CheckCircle2 size={14} className="text-emerald-500"/>}
+                                       <span className={acc.paid ? 'line-through' : ''}>{acc.name}</span>
+                                    </td>
+                                    <td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.variableTotal)}</td>
+                                    <td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.fixedTotal)}</td>
+                                    <td className="py-3 px-3 text-right text-sm font-bold text-theme-main">{formatMoney(acc.total)}</td>
+                                  </tr>
+                                ))}
                               </tbody>
                             </table>
                           </div>
