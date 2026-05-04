@@ -155,9 +155,9 @@
       const [fixForm, setFixForm] = useState({ name: '', amount: '', current: '', total: '', accountId: '' });
       const [accForm, setAccForm] = useState({ name: '', cut: '', pay: '' });
       const [groupForm, setGroupForm] = useState({ name: '', subj: '', time: '08:00' });
-      const [newQuote, setNewQuote] = useState(''); // Estado para la nueva frase
+      const [newQuote, setNewQuote] = useState(''); 
 
-      // --- PERSISTENCIA GRUPOS (LOCAL STORAGE PURO) ---
+      // --- PERSISTENCIA GRUPOS ---
       const [groups, setGroups] = useState(() => {
         const saved = localStorage.getItem('bitacora_grupos_v18') || localStorage.getItem('bitacora_grupos_v17') || localStorage.getItem('bitacora_grupos_v16');
         if (saved) {
@@ -171,7 +171,7 @@
         }];
       });
 
-      // --- PERSISTENCIA PERSONAL, FINANZAS Y SALUD (LOCAL STORAGE PURO) ---
+      // --- PERSISTENCIA PERSONAL, FINANZAS Y SALUD ---
       const [personalData, setPersonalData] = useState(() => {
         const saved = localStorage.getItem('bitacora_personal_v18') || localStorage.getItem('bitacora_personal_v17') || localStorage.getItem('bitacora_personal_v16');
         const baseData = {
@@ -194,14 +194,29 @@
              workouts: {}
           }
         };
+        
         if (saved) {
            const parsed = JSON.parse(saved);
-           if (parsed.finance && parsed.finance.accounts && !parsed.finance.accounts.some(a => a.name.includes('Efectivo'))) {
-              parsed.finance.accounts.push({ id: 'A2', name: 'Efectivo (Billetera)', type: 'Efectivo', cutDate: '-', payDate: '-' });
+           
+           // BLINDAJE DE FINANZAS PARA EVITAR PANTALLAS EN BLANCO
+           const safeFinance = {
+              accounts: parsed.finance?.accounts || baseData.finance.accounts,
+              transactions: parsed.finance?.transactions || [],
+              fixedPayments: parsed.finance?.fixedPayments || []
+           };
+
+           if (!safeFinance.accounts.some(a => a.name.includes('Efectivo'))) {
+              safeFinance.accounts.push({ id: 'A2', name: 'Efectivo (Billetera)', type: 'Efectivo', cutDate: '-', payDate: '-' });
            }
            if(!parsed.appTitle) parsed.appTitle = 'Agenda - Bitácora';
            
-           return { ...baseData, ...parsed, waterLogs: parsed.waterLogs || {}, health: parsed.health || { meals: {}, workouts: {} } };
+           return { 
+              ...baseData, 
+              ...parsed, 
+              finance: safeFinance, 
+              waterLogs: parsed.waterLogs || {}, 
+              health: parsed.health || { meals: {}, workouts: {} } 
+           };
         }
         return baseData;
       });
@@ -379,26 +394,40 @@
       const deleteGroupTask = (taskId, groupId = activeGroupId) => setGroups(prev => prev.map(g => g.id === groupId ? { ...g, tasks: (g.tasks || []).filter(t => t.id !== taskId) } : g));
       const toggleSessionStatus = (groupId, sessionId) => setGroups(prev => prev.map(g => g.id === groupId ? { ...g, sessions: g.sessions.map(s => s.id === sessionId ? { ...s, completed: !s.completed } : s) } : g));
 
-      // --- FINANZAS ---
+      // --- FINANZAS BLINDADAS ---
       const formatMoney = (n) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n);
       const addTransaction = (amount, concept, accountId) => {
-        setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, transactions: [{ id: Date.now(), amount: parseFloat(amount), concept, date: selectedDate, accountId, verified: false }, ...prev.finance.transactions] } }));
+        setPersonalData(prev => ({ 
+           ...prev, 
+           finance: { 
+              ...prev.finance, 
+              transactions: [{ id: Date.now(), amount: parseFloat(amount), concept, date: selectedDate, accountId, verified: false }, ...(prev.finance?.transactions || [])] 
+           } 
+        }));
         showToast("Gasto registrado");
       };
       const addFixedPayment = (name, amount, totalMonths, currentMonth, accountId) => {
-        setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, fixedPayments: [...prev.finance.fixedPayments, { id: Date.now(), name, amount: parseFloat(amount), totalMonths: parseInt(totalMonths), currentMonth: parseInt(currentMonth), accountId }] } }));
+        setPersonalData(prev => ({ 
+           ...prev, 
+           finance: { 
+              ...prev.finance, 
+              fixedPayments: [...(prev.finance?.fixedPayments || []), { id: Date.now(), name, amount: parseFloat(amount), totalMonths: parseInt(totalMonths), currentMonth: parseInt(currentMonth), accountId }] 
+           } 
+        }));
         showToast("Pago recurrente añadido");
       };
-      const toggleVerifyTx = (txId) => setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, transactions: prev.finance.transactions.map(t => t.id === txId ? { ...t, verified: !t.verified } : t) } }));
-      const incrementFixedMonth = (id) => setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, fixedPayments: prev.finance.fixedPayments.map(f => f.id === id ? { ...f, currentMonth: Math.min(f.totalMonths, f.currentMonth + 1) } : f ) } }));
+      const toggleVerifyTx = (txId) => setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, transactions: (prev.finance?.transactions || []).map(t => t.id === txId ? { ...t, verified: !t.verified } : t) } }));
+      const incrementFixedMonth = (id) => setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, fixedPayments: (prev.finance?.fixedPayments || []).map(f => f.id === id ? { ...f, currentMonth: Math.min(f.totalMonths, f.currentMonth + 1) } : f ) } }));
 
+      // Cálculo a prueba de fallos
       const accountSummaries = useMemo(() => {
-        return personalData.finance.accounts.map(acc => {
-          const variableTotal = personalData.finance.transactions.filter(t => t.accountId === acc.id).reduce((sum, t) => sum + t.amount, 0);
-          const fixedTotal = personalData.finance.fixedPayments.filter(f => f.accountId === acc.id).reduce((sum, f) => sum + f.amount, 0);
+        return (personalData.finance?.accounts || []).map(acc => {
+          const variableTotal = (personalData.finance?.transactions || []).filter(t => t.accountId === acc.id).reduce((sum, t) => sum + t.amount, 0);
+          const fixedTotal = (personalData.finance?.fixedPayments || []).filter(f => f.accountId === acc.id).reduce((sum, f) => sum + f.amount, 0);
           return { ...acc, variableTotal, fixedTotal, total: variableTotal + fixedTotal };
         });
       }, [personalData.finance]);
+      
       const grandTotal = accountSummaries.reduce((sum, acc) => sum + acc.total, 0);
 
       // --- TRACKERS Y CALENDARIO ---
@@ -878,6 +907,134 @@
                </div>
             )}
 
+            {viewMode === 'finance' && (
+              <div className="flex-1 p-10 overflow-y-auto max-w-7xl mx-auto w-full custom-scrollbar">
+                <header className="mb-10 flex justify-between items-end border-b border-theme-surface pb-8">
+                  <div><p className="text-[12px] font-bold text-theme-dark uppercase tracking-widest mb-2 italic">Mis Cuentas</p><h2 className="text-6xl font-serif font-bold text-theme-dark italic tracking-tighter">Bóveda Personal</h2></div>
+                  <div className="flex gap-4">
+                    <button onClick={() => setShowExpenseModal(true)} className="p-4 px-8 bg-theme-main text-white rounded-full font-bold text-xs tracking-widest uppercase shadow-lg hover:scale-105 transition-all flex items-center gap-2"><ArrowDownLeft size={16}/> Nuevo Gasto</button>
+                    <button onClick={() => setShowFixedModal(true)} className="p-4 px-8 bg-theme-sec text-white rounded-full font-bold text-xs tracking-widest uppercase shadow-lg hover:scale-105 transition-all flex items-center gap-2"><RefreshCw size={16}/> Pago Fijo / MSI</button>
+                  </div>
+                </header>
+
+                <section className="mb-12">
+                   <h3 className="text-xs font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2"><PieChart size={16}/> Concentrado de Pagos por Cuenta</h3>
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {accountSummaries.map(summary => (
+                         <div key={summary.id} className="bg-white p-6 rounded-[2.5rem] border border-theme-surface shadow-xl relative overflow-hidden group">
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-theme-surface rounded-full opacity-20 group-hover:scale-150 transition-transform"></div>
+                            <div className="flex justify-between items-center mb-6 relative z-10">
+                               <h4 className="font-serif text-2xl font-bold text-theme-dark italic">{summary.name}</h4>
+                               <span className="text-[9px] font-bold text-theme-main bg-theme-surface px-3 py-1 rounded-full uppercase">Corte: {summary.cutDate} | Pago: {summary.payDate}</span>
+                            </div>
+                            <div className="space-y-3 mb-6 relative z-10">
+                               <div className="flex justify-between items-center text-xs"><span className="text-slate-400 font-bold uppercase tracking-wider">Variables</span><span className="font-semibold text-slate-600">{formatMoney(summary.variableTotal)}</span></div>
+                               <div className="flex justify-between items-center text-xs"><span className="text-slate-400 font-bold uppercase tracking-wider">Fijos / MSI</span><span className="font-semibold text-slate-600">{formatMoney(summary.fixedTotal)}</span></div>
+                            </div>
+                            <div className="pt-4 border-t border-slate-50 flex justify-between items-end relative z-10">
+                               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Total a Pagar</span>
+                               <span className="text-3xl font-serif font-bold text-theme-main italic">{formatMoney(summary.total)}</span>
+                            </div>
+                         </div>
+                      ))}
+                      {accountSummaries.length === 0 && (
+                         <div className="col-span-full p-8 text-center border-2 border-dashed border-theme-surface rounded-[2.5rem] text-slate-400 text-sm italic">
+                            Aún no has configurado tus tarjetas. Ve a "Config" para añadir Banorte, Efectivo, etc.
+                         </div>
+                      )}
+                   </div>
+                </section>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                  <div className="space-y-8">
+                    <section className="bg-white p-8 rounded-[4rem] border border-theme-surface shadow-xl">
+                      <h3 className="text-xs font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2"><CreditCard size={16}/> MSI y Pagos Fijos</h3>
+                      <div className="space-y-4">
+                        {(personalData.finance?.fixedPayments || []).map(f => (
+                          <div key={f.id} className="p-5 bg-slate-50 rounded-[2.5rem] border border-white">
+                            <div className="flex justify-between items-start mb-3">
+                              <div><p className="font-bold text-slate-700 text-sm italic">{f.name}</p><p className="text-[10px] text-slate-400 font-bold uppercase">{(personalData.finance?.accounts || []).find(a=>a.id===f.accountId)?.name}</p></div>
+                              <p className="font-bold text-theme-main">{formatMoney(f.amount)}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                               <div className="flex-1 h-1.5 bg-white rounded-full overflow-hidden">
+                                  <div className="h-full bg-theme-sec" style={{width:`${(f.currentMonth/f.totalMonths)*100}%`}}></div>
+                               </div>
+                               <span className="text-[10px] font-bold text-slate-400">{f.currentMonth}/{f.totalMonths}</span>
+                               <button onClick={() => incrementFixedMonth(f.id)} className="p-1 bg-white rounded-lg shadow-sm text-theme-main"><Plus size={12}/></button>
+                            </div>
+                          </div>
+                        ))}
+                        {(personalData.finance?.fixedPayments || []).length === 0 && <p className="text-xs text-slate-300 italic px-2">No hay pagos fijos programados.</p>}
+                      </div>
+                    </section>
+                  </div>
+                  
+                  <div className="lg:col-span-2 space-y-8">
+                     <section className="bg-white p-10 rounded-[4rem] border border-theme-surface shadow-xl">
+                        <div className="flex justify-between items-start mb-8 border-b border-slate-50 pb-6">
+                          <div>
+                            <h3 className="text-xs font-bold uppercase text-slate-400 tracking-widest flex items-center gap-2 mb-2"><Receipt size={16}/> Registro Mensual (Global)</h3>
+                            <p className="text-sm text-slate-500 italic">Desglose de sumas consolidadas y lista de transacciones.</p>
+                          </div>
+                          <div className="text-right bg-theme-surface/50 p-4 rounded-3xl">
+                             <p className="text-[10px] font-bold text-theme-main uppercase tracking-widest mb-1">Gran Total del Mes</p>
+                             <p className="text-4xl font-serif font-bold text-theme-dark italic">{formatMoney(grandTotal)}</p>
+                          </div>
+                        </div>
+
+                        <div className="mb-10 bg-slate-50 rounded-3xl p-6 border border-slate-100">
+                          <h4 className="text-[10px] font-bold text-theme-sec uppercase tracking-widest mb-4 flex items-center gap-2"><Calculator size={14}/> Resumen de Totales por Cuenta</h4>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                              <thead>
+                                <tr className="text-[9px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200">
+                                  <th className="pb-3 px-3">Cuenta / Tarjeta</th>
+                                  <th className="pb-3 px-3 text-right">Gastos Diarios (Var)</th>
+                                  <th className="pb-3 px-3 text-right">Pagos Fijos (MSI)</th>
+                                  <th className="pb-3 px-3 text-right text-theme-dark">Total a Pagar</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {accountSummaries.map(acc => (
+                                  <tr key={`sum-${acc.id}`} className="border-b border-slate-100 last:border-0">
+                                    <td className="py-3 px-3 text-xs font-bold text-slate-700">{acc.name}</td>
+                                    <td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.variableTotal)}</td>
+                                    <td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.fixedTotal)}</td>
+                                    <td className="py-3 px-3 text-right text-sm font-bold text-theme-main">{formatMoney(acc.total)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ListChecks size={14}/> Detalle de Gastos Diarios</h4>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                              <thead><tr className="text-[10px] font-bold text-slate-300 uppercase tracking-widest border-b border-slate-50"><th className="pb-4 px-4">✓</th><th className="pb-4 px-4">Fecha</th><th className="pb-4 px-4">Concepto</th><th className="pb-4 px-4">Tarjeta</th><th className="pb-4 px-4 text-right">Monto</th></tr></thead>
+                              <tbody>
+                                 {(personalData.finance?.transactions || []).map(t => (
+                                   <tr key={t.id} className={`group hover:bg-theme-surface/50 transition-all border-b border-slate-50 ${t.verified ? 'opacity-50' : ''}`}>
+                                      <td className="py-4 px-4"><button onClick={() => toggleVerifyTx(t.id)} className={t.verified ? 'text-theme-main' : 'text-slate-200'}>{t.verified ? <CheckCircle2 size={18}/> : <Circle size={18}/>}</button></td>
+                                      <td className="py-4 px-4 text-[10px] font-bold text-slate-400">{t.date}</td>
+                                      <td className="py-4 px-4 text-xs font-semibold text-slate-600 italic">{t.concept}</td>
+                                      <td className="py-4 px-4"><span className="px-3 py-1 bg-white rounded-full text-[9px] font-bold uppercase text-slate-400 shadow-sm">{(personalData.finance?.accounts || []).find(a=>a.id===t.accountId)?.name}</span></td>
+                                      <td className="py-4 px-4 text-right font-bold text-slate-700 text-sm">{formatMoney(t.amount)}</td>
+                                   </tr>
+                                 ))}
+                              </tbody>
+                            </table>
+                            {(personalData.finance?.transactions || []).length === 0 && <p className="text-xs text-slate-300 italic text-center py-6">No hay gastos variables este mes.</p>}
+                          </div>
+                        </div>
+                     </section>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* VISTA SETTINGS ACTUALIZADA */}
             {viewMode === 'settings' && (
               <div className="flex-1 p-20 overflow-y-auto max-w-6xl mx-auto w-full custom-scrollbar">
@@ -940,12 +1097,11 @@
                       </div>
                    </section>
 
-                   {/* NUEVO: SECCIÓN PARA FRASES Y TRACKERS EN CONFIGURACIÓN */}
+                   {/* SECCIÓN PARA FRASES Y TRACKERS EN CONFIGURACIÓN */}
                    <section className="bg-white p-10 rounded-[4rem] border border-theme-surface shadow-xl">
                       <h3 className="font-bold text-[12px] uppercase tracking-[0.5em] text-theme-dark mb-6 flex items-center gap-4 italic"><Quote size={20}/> Frases y Hábitos</h3>
                       
                       <div className="space-y-6">
-                        {/* Frases Diarias */}
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tus Frases Inspiradoras</p>
                           <div className="flex gap-4">
@@ -964,7 +1120,6 @@
                               }
                             }} className="p-4 bg-theme-main text-white rounded-2xl font-bold shadow-md hover:scale-105"><Plus size={24}/></button>
                           </div>
-                          {/* Lista rápida de frases para poder borrarlas si se quiere */}
                           <div className="mt-3 max-h-32 overflow-y-auto custom-scrollbar pr-2 space-y-2">
                              {personalData.quotes.map((q, idx) => (
                                <div key={idx} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl group">
@@ -979,7 +1134,6 @@
                           </div>
                         </div>
 
-                        {/* Nuevos Hábitos */}
                         <div className="pt-6 border-t border-slate-50">
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Nuevos Hábitos para el Bujo</p>
                           <div className="flex gap-4">
@@ -1221,7 +1375,7 @@
                   <input type="text" value={expForm.concept} onChange={e=>setExpForm({...expForm, concept: e.target.value})} placeholder="Concepto (Ej. Súper...)" className="w-full p-4 bg-slate-50 rounded-2xl border-none text-sm italic text-slate-700" />
                   <select value={expForm.accountId} onChange={e=>setExpForm({...expForm, accountId: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border-none text-xs font-bold uppercase tracking-widest text-slate-700 focus:outline-none focus:ring-2 focus:ring-theme-surface">
                     <option value="" disabled>Selecciona la cuenta...</option>
-                    {personalData.finance?.accounts?.map(a => <option key={a.id} value={a.id} className="text-slate-700">{a.name}</option>)}
+                    {(personalData.finance?.accounts || []).map(a => <option key={a.id} value={a.id} className="text-slate-700">{a.name}</option>)}
                   </select>
                   <button onClick={() => { 
                     if(expForm.amount && expForm.concept && expForm.accountId) { 
@@ -1250,7 +1404,7 @@
                   </div>
                   <select value={fixForm.accountId} onChange={e=>setFixForm({...fixForm, accountId: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold uppercase tracking-widest text-slate-700 focus:outline-none focus:ring-2 focus:ring-theme-surface">
                     <option value="" disabled>Selecciona la cuenta...</option>
-                    {personalData.finance?.accounts?.map(a => <option key={a.id} value={a.id} className="text-slate-700">{a.name}</option>)}
+                    {(personalData.finance?.accounts || []).map(a => <option key={a.id} value={a.id} className="text-slate-700">{a.name}</option>)}
                   </select>
                   <button onClick={() => { 
                     if(fixForm.name && fixForm.amount && fixForm.total && fixForm.accountId) { 
