@@ -96,6 +96,7 @@
     ];
 
     const App = () => {
+      // --- ESTADOS PRINCIPALES ---
       const [viewMode, setViewMode] = useState('welcome'); 
       const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
       const [isPrivateMode, setIsPrivateMode] = useState(false);
@@ -108,12 +109,12 @@
       const [showEventModal, setShowEventModal] = useState({ show: false, date: null, text: '' });
       const [scheduleModal, setScheduleModal] = useState({ show: false, itemType: null, itemId: null, itemName: '', date: selectedDate });
       
+      // Modales de acciones
       const [showExpenseModal, setShowExpenseModal] = useState(false);
       const [showFixedModal, setShowFixedModal] = useState(false);
       const [showGymModal, setShowGymModal] = useState(false);
       const [showGroupModal, setShowGroupModal] = useState(false); 
       const [customExName, setCustomExName] = useState(''); 
-      
       const [showImportModal, setShowImportModal] = useState(false);
       const [importType, setImportType] = useState('topics'); 
       const [importText, setImportText] = useState("");
@@ -122,12 +123,12 @@
       const [groupToDelete, setGroupToDelete] = useState(null);
       const fileInputRef = useRef(null);
 
+      // Formularios
       const [expForm, setExpForm] = useState({ amount: '', concept: '', accountId: '' });
       const [fixForm, setFixForm] = useState({ name: '', amount: '', current: '', total: '', accountId: '' });
       const [accForm, setAccForm] = useState({ name: '', cut: '', pay: '' });
       const [groupForm, setGroupForm] = useState({ name: '', subj: '', schedule: [] });
       const [newQuote, setNewQuote] = useState(''); 
-      
       const [manualEntry, setManualEntry] = useState({ topics: '', adas: '' });
       const [chartRange, setChartRange] = useState('week'); 
 
@@ -420,6 +421,7 @@
 
           {viewMode !== 'welcome' && <button onClick={() => setIsPrivateMode(!isPrivateMode)} className="fixed bottom-10 right-10 z-50 p-6 rounded-full bg-white shadow-2xl border border-theme-surface text-theme-sec hover:scale-110 active:scale-95 transition-all print:hidden">{isPrivateMode ? <Eye size={28} /> : <EyeOff size={28} />}</button>}
 
+          {/* CONTENEDOR PRINCIPAL - LÓGICA DE VISTAS LIMPIA */}
           <main className="flex-1 flex flex-col overflow-hidden relative">
             {isPrivateMode && viewMode !== 'welcome' && <div className="absolute inset-0 z-40 bg-theme-bg/95 backdrop-blur-2xl flex flex-col items-center justify-center text-theme-main"><Lock size={100} className="mb-8 opacity-10" /><h2 className="text-4xl font-serif font-bold italic tracking-widest uppercase">Modo Privado</h2></div>}
 
