@@ -88,7 +88,7 @@
     import React, { useState, useEffect, useMemo, useRef } from 'react';
     import { createRoot } from 'react-dom/client';
     import { 
-      CheckCircle2, Circle, BookOpen, Calendar, ChevronRight, Edit3, Printer, PlusCircle, Layout, Clock, ArrowLeft, ArrowRight, User, Eye, EyeOff, Droplet, Moon, Dumbbell, Quote, GraduationCap, Download, Trash2, Lock, Settings, Plus, Check, ListChecks, ClipboardList, History, Sparkles, Flower2, Upload, RefreshCw, Image as ImageIcon, Smile, Meh, Frown, Monitor, TrendingUp, CalendarDays, RotateCcw, X, AlertCircle, Wallet, CreditCard, Receipt, PiggyBank, ArrowUpRight, ArrowDownLeft, ImagePlus, Palette, PieChart, BarChart3, Calculator, AlertTriangle, HeartPulse, Utensils, Flame, Activity, Coffee, Play
+      CheckCircle2, Circle, BookOpen, Calendar, ChevronRight, Edit3, Printer, PlusCircle, Layout, Clock, ArrowLeft, ArrowRight, User, Eye, EyeOff, Droplet, Moon, Dumbbell, Quote, GraduationCap, Download, Trash2, Lock, Settings, Plus, Check, ListChecks, ClipboardList, History, Sparkles, Flower2, Upload, RefreshCw, Image as ImageIcon, Smile, Meh, Frown, Monitor, TrendingUp, CalendarDays, RotateCcw, X, AlertCircle, Wallet, CreditCard, Receipt, PiggyBank, ArrowUpRight, ArrowDownLeft, ImagePlus, Palette, PieChart, BarChart3, Calculator, AlertTriangle, HeartPulse, Utensils, Flame, Activity, Coffee, Play, CalendarClock
     } from 'lucide-react';
 
     // DICCIONARIO DE TEMAS
@@ -98,7 +98,15 @@
       matcha: { main: '#588157', sec: '#A3B18A', dark: '#344E41', bg: '#FAFAED', surface: '#F1F4E8', accent: '#DAD7CD' }
     };
 
+    // DÍAS DE LA SEMANA
+    const DAYS_OF_WEEK = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const SHORT_DAYS = [
+      {id:1, label:'L', name:'Lunes'}, {id:2, label:'M', name:'Martes'}, {id:3, label:'M', name:'Miércoles'}, 
+      {id:4, label:'J', name:'Jueves'}, {id:5, label:'V', name:'Viernes'}, {id:6, label:'S', name:'Sábado'}
+    ];
+
     // CATÁLOGO DE EJERCICIOS
+    // AQUÍ ES DONDE PUEDES AGREGAR MÁS EJERCICIOS DE FORMA PERMANENTE.
     const GYM_CATALOG = [
       // TREN INFERIOR
       { id: 'TI1', name: 'Sentadilla libre', target: 'Tren Inferior', defaultSeries: 2, defaultReps: 10 },
@@ -119,7 +127,13 @@
       { id: 'TS5', name: 'Jalón unilateral en polea, sentado', target: 'Tren Superior', defaultSeries: 2, defaultReps: 15 },
       { id: 'TS6', name: 'Curl predicador con mancuerna', target: 'Tren Superior', defaultSeries: 2, defaultReps: 10 },
       { id: 'TS7', name: 'Extensión de tríceps sobre la cabeza', target: 'Tren Superior', defaultSeries: 2, defaultReps: 10 },
-      { id: 'TS8', name: 'Push-ups / Flexiones', target: 'Tren Superior', defaultSeries: 2, defaultReps: 10 }
+      { id: 'TS8', name: 'Push-ups / Flexiones', target: 'Tren Superior', defaultSeries: 2, defaultReps: 10 },
+
+      // NUEVO: ABDOMEN / CORE
+      { id: 'AB1', name: 'Crunch abdominal', target: 'Abdomen', defaultSeries: 3, defaultReps: 15 },
+      { id: 'AB2', name: 'Elevación de piernas', target: 'Abdomen', defaultSeries: 3, defaultReps: 12 },
+      { id: 'AB3', name: 'Plancha (Segundos)', target: 'Abdomen', defaultSeries: 3, defaultReps: 45 },
+      { id: 'AB4', name: 'Giro Ruso (Russian Twist)', target: 'Abdomen', defaultSeries: 3, defaultReps: 20 }
     ];
 
     const App = () => {
@@ -139,41 +153,40 @@
       const [showEventModal, setShowEventModal] = useState({ show: false, date: null, text: '' });
       const [scheduleModal, setScheduleModal] = useState({ show: false, itemType: null, itemId: null, itemName: '', date: selectedDate });
       
-      // Finanzas Modales
+      // Finanzas & Gym Modales
       const [showExpenseModal, setShowExpenseModal] = useState(false);
       const [showFixedModal, setShowFixedModal] = useState(false);
+      const [showGymModal, setShowGymModal] = useState(false);
+      const [customExName, setCustomExName] = useState(''); // Para añadir ejercicios sueltos al vuelo
+      
       const [editingGroup, setEditingGroup] = useState(null);
       const [groupToDelete, setGroupToDelete] = useState(null);
-      
-      // Gym Modales
-      const [showGymModal, setShowGymModal] = useState(false);
-
       const fileInputRef = useRef(null);
 
       // ESTADOS FORMULARIOS
       const [expForm, setExpForm] = useState({ amount: '', concept: '', accountId: '' });
       const [fixForm, setFixForm] = useState({ name: '', amount: '', current: '', total: '', accountId: '' });
       const [accForm, setAccForm] = useState({ name: '', cut: '', pay: '' });
-      const [groupForm, setGroupForm] = useState({ name: '', subj: '', time: '08:00' });
+      const [groupForm, setGroupForm] = useState({ name: '', subj: '', time: '08:00', days: [] });
       const [newQuote, setNewQuote] = useState(''); 
 
       // --- PERSISTENCIA GRUPOS ---
       const [groups, setGroups] = useState(() => {
-        const saved = localStorage.getItem('bitacora_grupos_v18') || localStorage.getItem('bitacora_grupos_v17') || localStorage.getItem('bitacora_grupos_v16');
+        const saved = localStorage.getItem('bitacora_grupos_v19') || localStorage.getItem('bitacora_grupos_v18') || localStorage.getItem('bitacora_grupos_v17');
         if (saved) {
-          return JSON.parse(saved).map(g => ({ ...g, time: g.time || '08:00' }));
+          return JSON.parse(saved).map(g => ({ ...g, time: g.time || '08:00', days: g.days || [] }));
         }
         return [{ 
-          id: 'G1', name: 'Grupo 101', subject: 'Diseño Urbano I', color: '#BE95C4', time: '07:00',
+          id: 'G1', name: 'Grupo 101', subject: 'Diseño Urbano I', color: '#BE95C4', time: '07:00', days: ['Lunes', 'Miércoles'],
           topics: [{ id: 1, title: 'Introducción al Urbanismo Sistémico', completed: false }],
           adas: [{ id: 101, title: 'ADA 1: Mapa Conceptual', completed: false }],
           sessions: [], tasks: []
         }];
       });
 
-      // --- PERSISTENCIA PERSONAL, FINANZAS Y SALUD ---
+      // --- PERSISTENCIA PERSONAL ---
       const [personalData, setPersonalData] = useState(() => {
-        const saved = localStorage.getItem('bitacora_personal_v18') || localStorage.getItem('bitacora_personal_v17') || localStorage.getItem('bitacora_personal_v16');
+        const saved = localStorage.getItem('bitacora_personal_v19') || localStorage.getItem('bitacora_personal_v18') || localStorage.getItem('bitacora_personal_v17');
         const baseData = {
           appTitle: 'Agenda - Bitácora', 
           theme: 'jacaranda', 
@@ -189,52 +202,38 @@
              ], 
              transactions: [], fixedPayments: [] 
           },
-          health: {
-             meals: {}, 
-             workouts: {}
-          }
+          health: { meals: {}, workouts: {} }
         };
         
         if (saved) {
            const parsed = JSON.parse(saved);
-           
-           // BLINDAJE DE FINANZAS PARA EVITAR PANTALLAS EN BLANCO
            const safeFinance = {
               accounts: parsed.finance?.accounts || baseData.finance.accounts,
               transactions: parsed.finance?.transactions || [],
               fixedPayments: parsed.finance?.fixedPayments || []
            };
-
            if (!safeFinance.accounts.some(a => a.name.includes('Efectivo'))) {
               safeFinance.accounts.push({ id: 'A2', name: 'Efectivo (Billetera)', type: 'Efectivo', cutDate: '-', payDate: '-' });
            }
            if(!parsed.appTitle) parsed.appTitle = 'Agenda - Bitácora';
            
-           return { 
-              ...baseData, 
-              ...parsed, 
-              finance: safeFinance, 
-              waterLogs: parsed.waterLogs || {}, 
-              health: parsed.health || { meals: {}, workouts: {} } 
-           };
+           return { ...baseData, ...parsed, finance: safeFinance, waterLogs: parsed.waterLogs || {}, health: parsed.health || { meals: {}, workouts: {} } };
         }
         return baseData;
       });
 
       const [activeGroupId, setActiveGroupId] = useState(groups[0]?.id);
 
-      useEffect(() => { localStorage.setItem('bitacora_grupos_v17', JSON.stringify(groups)); }, [groups]);
-      useEffect(() => { localStorage.setItem('bitacora_personal_v17', JSON.stringify(personalData)); }, [personalData]);
+      useEffect(() => { localStorage.setItem('bitacora_grupos_v19', JSON.stringify(groups)); }, [groups]);
+      useEffect(() => { localStorage.setItem('bitacora_personal_v19', JSON.stringify(personalData)); }, [personalData]);
 
-      // Efecto para cambiar el título de la pestaña del navegador
-      useEffect(() => {
-         document.title = personalData.appTitle || 'Agenda - Bitácora';
-      }, [personalData.appTitle]);
+      useEffect(() => { document.title = personalData.appTitle || 'Agenda - Bitácora'; }, [personalData.appTitle]);
 
       const activeTheme = THEMES[personalData.theme || 'jacaranda'];
 
-      // --- DERIVADOS ---
+      // --- DERIVADOS: GRUPOS PARA "HOY" ---
       const activeGroup = useMemo(() => groups.find(g => g.id === activeGroupId), [groups, activeGroupId]);
+      
       const weekDays = useMemo(() => {
         const dt = new Date(selectedDate + 'T12:00:00');
         const day = dt.getDay();
@@ -246,210 +245,100 @@
         });
       }, [selectedDate]);
 
-      const calculateGrading = (group) => {
-        if (!group?.adas?.length) return 0;
-        return Math.round((group.adas.filter(a => a.completed).length / group.adas.length) * 100);
-      };
+      const currentDayName = useMemo(() => {
+         const d = new Date(selectedDate + 'T12:00:00');
+         return DAYS_OF_WEEK[d.getDay()];
+      }, [selectedDate]);
+
+      const groupsToday = useMemo(() => {
+         return groups.filter(g => {
+            const hasSessionToday = g.sessions?.some(s => s.date === selectedDate);
+            const isScheduledForToday = g.days?.includes(currentDayName);
+            return hasSessionToday || isScheduledForToday;
+         }).sort((a,b) => a.time.localeCompare(b.time));
+      }, [groups, selectedDate, currentDayName]);
 
       const globalPendingTasks = useMemo(() => {
         return groups.flatMap(g => (g.tasks || []).filter(t => !t.done).map(t => ({ ...t, groupName: g.name, color: g.color, groupId: g.id })));
       }, [groups]);
 
-      // --- ACCIONES SALUD & GYM ---
-      const setMeal = (type, value) => {
-        setPersonalData(prev => ({ ...prev, health: { ...prev.health, meals: { ...prev.health.meals, [selectedDate]: { ...(prev.health.meals[selectedDate] || {}), [type]: value } } } }));
-      };
-      
-      const setWorkoutGeneral = (field, value) => {
-        setPersonalData(prev => ({ ...prev, health: { ...prev.health, workouts: { ...prev.health.workouts, [selectedDate]: { ...(prev.health.workouts[selectedDate] || { exercises: [] }), [field]: value } } } }));
-      };
-
-      const loadRoutine = (target) => {
-        const routineExercises = GYM_CATALOG.filter(e => e.target === target).map(e => ({
-          id: Date.now() + Math.random(),
-          name: e.name,
-          series: e.defaultSeries,
-          reps: e.defaultReps,
-          weight: 0,
-          done: false
-        }));
-        
-        setPersonalData(prev => {
-          const currentDay = prev.health.workouts[selectedDate] || { exercises: [] };
-          return {
-            ...prev,
-            health: {
-              ...prev.health,
-              workouts: {
-                ...prev.health.workouts,
-                [selectedDate]: {
-                  ...currentDay,
-                  type: target,
-                  exercises: [...currentDay.exercises, ...routineExercises]
-                }
-              }
-            }
-          };
-        });
-        showToast(`Rutina de ${target} cargada`);
-      };
-
-      const updateGymExercise = (exId, field, value) => {
-         setPersonalData(prev => {
-            const currentDay = prev.health.workouts[selectedDate];
-            if (!currentDay) return prev;
-            return {
-               ...prev,
-               health: {
-                  ...prev.health,
-                  workouts: {
-                     ...prev.health.workouts,
-                     [selectedDate]: {
-                        ...currentDay,
-                        exercises: currentDay.exercises.map(ex => ex.id === exId ? { ...ex, [field]: value } : ex)
-                     }
-                  }
-               }
-            };
-         });
-      };
-
-      const deleteGymExercise = (exId) => {
-         setPersonalData(prev => {
-            const currentDay = prev.health.workouts[selectedDate];
-            if (!currentDay) return prev;
-            return {
-               ...prev,
-               health: {
-                  ...prev.health,
-                  workouts: {
-                     ...prev.health.workouts,
-                     [selectedDate]: {
-                        ...currentDay,
-                        exercises: currentDay.exercises.filter(ex => ex.id !== exId)
-                     }
-                  }
-               }
-            };
-         });
-      };
-
-      const currentMeals = personalData.health.meals[selectedDate] || { desayuno: '', comida: '', cena: '', snacks: '' };
-      const currentWorkout = personalData.health.workouts[selectedDate] || { type: '', duration: '', energy: 0, exercises: [] };
-
       // --- ACCIONES GENERALES ---
       const showToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 3000); };
-      const addSession = (type, contentId, dateStr) => {
+      const addSession = (type, contentId, dateStr, groupIdToUse) => {
+        const targetGroupId = groupIdToUse || activeGroupId;
         const newSession = { id: Date.now(), date: dateStr, type, contentId, notes: "", completed: false };
-        setGroups(prev => prev.map(g => g.id === activeGroupId ? { ...g, sessions: [...(g.sessions || []), newSession].sort((a,b) => new Date(a.date)-new Date(b.date)) } : g));
-        showToast("Programado");
+        setGroups(prev => prev.map(g => g.id === targetGroupId ? { ...g, sessions: [...(g.sessions || []), newSession].sort((a,b) => new Date(a.date)-new Date(b.date)) } : g));
+        showToast("Sesión programada");
       };
 
       // --- GESTIÓN DE GRUPOS ---
-      const addNewGroup = (name, subject, time) => {
-        if(!name || !subject) return;
-        const newGroup = { id: 'G' + Date.now(), name, subject, time: time || '08:00', color: ['#9B5DE5', '#BE95C4', '#E0B1CB', '#5E548E', '#9A8C98'][Math.floor(Math.random() * 5)], topics: [], adas: [], sessions: [], tasks: [] };
+      const toggleGroupFormDay = (dayName) => {
+         setGroupForm(prev => {
+            const currentDays = prev.days || [];
+            if(currentDays.includes(dayName)) return { ...prev, days: currentDays.filter(d => d !== dayName) };
+            return { ...prev, days: [...currentDays, dayName] };
+         });
+      };
+
+      const toggleEditingGroupDay = (dayName) => {
+         setEditingGroup(prev => {
+            const currentDays = prev.days || [];
+            if(currentDays.includes(dayName)) return { ...prev, days: currentDays.filter(d => d !== dayName) };
+            return { ...prev, days: [...currentDays, dayName] };
+         });
+      };
+
+      const addNewGroup = () => {
+        if(!groupForm.name || !groupForm.subj) return showToast("Falta nombre o materia");
+        const newGroup = { id: 'G' + Date.now(), name: groupForm.name, subject: groupForm.subj, time: groupForm.time || '08:00', days: groupForm.days || [], color: ['#9B5DE5', '#BE95C4', '#E0B1CB', '#5E548E', '#9A8C98'][Math.floor(Math.random() * 5)], topics: [], adas: [], sessions: [], tasks: [] };
         setGroups([...groups, newGroup].sort((a,b) => a.time.localeCompare(b.time)));
         if(!activeGroupId) setActiveGroupId(newGroup.id);
+        setGroupForm({name:'', subj:'', time:'08:00', days:[]});
         showToast("Nuevo grupo creado");
       };
+      
       const updateGroup = () => {
         if(!editingGroup || !editingGroup.name || !editingGroup.subject) return;
-        setGroups(prev => prev.map(g => g.id === editingGroup.id ? { ...g, name: editingGroup.name, subject: editingGroup.subject, time: editingGroup.time } : g).sort((a,b) => a.time.localeCompare(b.time)));
+        setGroups(prev => prev.map(g => g.id === editingGroup.id ? { ...g, name: editingGroup.name, subject: editingGroup.subject, time: editingGroup.time, days: editingGroup.days } : g).sort((a,b) => a.time.localeCompare(b.time)));
         setEditingGroup(null);
-        showToast("Información del grupo actualizada");
-      };
-      const deleteGroup = () => {
-        if(!groupToDelete) return;
-        setGroups(prev => prev.filter(g => g.id !== groupToDelete.id));
-        if(activeGroupId === groupToDelete.id) {
-          const remaining = groups.filter(g => g.id !== groupToDelete.id);
-          setActiveGroupId(remaining.length > 0 ? remaining[0].id : null);
-        }
-        setGroupToDelete(null);
-        showToast("Grupo eliminado");
+        showToast("Grupo actualizado");
       };
 
-      const handleFactoryReset = () => {
-        localStorage.clear();
-        setGroups([{ id: 'G1', name: 'Nuevo Grupo', subject: 'Materia...', color: '#BE95C4', time: '08:00', topics: [], adas: [], sessions: [], tasks: [] }]);
-        setPersonalData({
-          appTitle: 'Agenda - Bitácora',
-          theme: 'jacaranda', habits: { exercise: false }, waterLogs: {},
-          sleep: { start: '22:00', end: '06:00' }, screenTime: 4, tasks: [],
-          quotes: ["La arquitectura es música congelada."], activeQuoteIndex: 0,
-          habitMatrix: {}, moodLogs: {}, calendarEvents: {},
-          finance: { accounts: [], transactions: [], fixedPayments: [] },
-          health: { meals: {}, workouts: {} }
-        });
-        setCoverImage(null); setShowFactoryResetModal(false); setActiveGroupId('G1'); setViewMode('welcome');
-        showToast("¡Agenda reseteada a estado de fábrica!");
-      };
-
+      const deleteGroup = () => { if(!groupToDelete) return; setGroups(prev => prev.filter(g => g.id !== groupToDelete.id)); if(activeGroupId === groupToDelete.id) { const remaining = groups.filter(g => g.id !== groupToDelete.id); setActiveGroupId(remaining.length > 0 ? remaining[0].id : null); } setGroupToDelete(null); showToast("Grupo eliminado"); };
       const toggleStatus = (type, id, groupId = activeGroupId) => setGroups(prev => prev.map(g => g.id === groupId ? { ...g, [type]: g[type].map(item => item.id === id ? { ...item, completed: !item.completed } : item) } : g));
-      const deleteItem = (type, id) => setGroups(prev => prev.map(g => g.id === activeGroupId ? { ...g, [type]: g[type].filter(item => item.id !== id) } : g));
-      const updateSessionNotes = (sessionId, notes) => setGroups(prev => prev.map(g => g.id === activeGroupId ? { ...g, sessions: g.sessions.map(s => s.id === sessionId ? { ...s, notes } : s) } : g));
-      const addGroupTask = (text) => { if(text) setGroups(prev => prev.map(g => g.id === activeGroupId ? { ...g, tasks: [...(g.tasks || []), { id: Date.now(), text, done: false }] } : g)); };
-      const toggleGroupTask = (taskId, groupId = activeGroupId) => setGroups(prev => prev.map(g => g.id === groupId ? { ...g, tasks: (g.tasks || []).map(t => t.id === taskId ? { ...t, done: !t.done } : t) } : g));
-      const deleteGroupTask = (taskId, groupId = activeGroupId) => setGroups(prev => prev.map(g => g.id === groupId ? { ...g, tasks: (g.tasks || []).filter(t => t.id !== taskId) } : g));
       const toggleSessionStatus = (groupId, sessionId) => setGroups(prev => prev.map(g => g.id === groupId ? { ...g, sessions: g.sessions.map(s => s.id === sessionId ? { ...s, completed: !s.completed } : s) } : g));
-
-      // --- FINANZAS BLINDADAS ---
+      const toggleGroupTask = (taskId, groupId = activeGroupId) => setGroups(prev => prev.map(g => g.id === groupId ? { ...g, tasks: (g.tasks || []).map(t => t.id === taskId ? { ...t, done: !t.done } : t) } : g));
+      const handleFactoryReset = () => { localStorage.clear(); setGroups([{ id: 'G1', name: 'Nuevo Grupo', subject: 'Materia...', color: '#BE95C4', time: '08:00', days:[], topics: [], adas: [], sessions: [], tasks: [] }]); setPersonalData({ appTitle: 'Agenda - Bitácora', theme: 'jacaranda', habits: { exercise: false }, waterLogs: {}, sleep: { start: '22:00', end: '06:00' }, screenTime: 4, tasks: [], quotes: ["La arquitectura es música congelada."], activeQuoteIndex: 0, habitMatrix: {}, moodLogs: {}, calendarEvents: {}, finance: { accounts: [], transactions: [], fixedPayments: [] }, health: { meals: {}, workouts: {} } }); setCoverImage(null); setShowFactoryResetModal(false); setActiveGroupId('G1'); setViewMode('welcome'); showToast("¡Reseteo exitoso!"); };
+      
+      // FINANZAS
       const formatMoney = (n) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n);
-      const addTransaction = (amount, concept, accountId) => {
-        setPersonalData(prev => ({ 
-           ...prev, 
-           finance: { 
-              ...prev.finance, 
-              transactions: [{ id: Date.now(), amount: parseFloat(amount), concept, date: selectedDate, accountId, verified: false }, ...(prev.finance?.transactions || [])] 
-           } 
-        }));
-        showToast("Gasto registrado");
-      };
-      const addFixedPayment = (name, amount, totalMonths, currentMonth, accountId) => {
-        setPersonalData(prev => ({ 
-           ...prev, 
-           finance: { 
-              ...prev.finance, 
-              fixedPayments: [...(prev.finance?.fixedPayments || []), { id: Date.now(), name, amount: parseFloat(amount), totalMonths: parseInt(totalMonths), currentMonth: parseInt(currentMonth), accountId }] 
-           } 
-        }));
-        showToast("Pago recurrente añadido");
-      };
+      const addTransaction = (amount, concept, accountId) => { setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, transactions: [{ id: Date.now(), amount: parseFloat(amount), concept, date: selectedDate, accountId, verified: false }, ...(prev.finance?.transactions || [])] } })); showToast("Gasto registrado"); };
+      const addFixedPayment = (name, amount, totalMonths, currentMonth, accountId) => { setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, fixedPayments: [...(prev.finance?.fixedPayments || []), { id: Date.now(), name, amount: parseFloat(amount), totalMonths: parseInt(totalMonths), currentMonth: parseInt(currentMonth), accountId }] } })); showToast("Pago añadido"); };
       const toggleVerifyTx = (txId) => setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, transactions: (prev.finance?.transactions || []).map(t => t.id === txId ? { ...t, verified: !t.verified } : t) } }));
       const incrementFixedMonth = (id) => setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, fixedPayments: (prev.finance?.fixedPayments || []).map(f => f.id === id ? { ...f, currentMonth: Math.min(f.totalMonths, f.currentMonth + 1) } : f ) } }));
-
-      // Cálculo a prueba de fallos
-      const accountSummaries = useMemo(() => {
-        return (personalData.finance?.accounts || []).map(acc => {
-          const variableTotal = (personalData.finance?.transactions || []).filter(t => t.accountId === acc.id).reduce((sum, t) => sum + t.amount, 0);
-          const fixedTotal = (personalData.finance?.fixedPayments || []).filter(f => f.accountId === acc.id).reduce((sum, f) => sum + f.amount, 0);
-          return { ...acc, variableTotal, fixedTotal, total: variableTotal + fixedTotal };
-        });
-      }, [personalData.finance]);
-      
+      const accountSummaries = useMemo(() => { return (personalData.finance?.accounts || []).map(acc => { const variableTotal = (personalData.finance?.transactions || []).filter(t => t.accountId === acc.id).reduce((sum, t) => sum + t.amount, 0); const fixedTotal = (personalData.finance?.fixedPayments || []).filter(f => f.accountId === acc.id).reduce((sum, f) => sum + f.amount, 0); return { ...acc, variableTotal, fixedTotal, total: variableTotal + fixedTotal }; }); }, [personalData.finance]);
       const grandTotal = accountSummaries.reduce((sum, acc) => sum + acc.total, 0);
 
-      // --- TRACKERS Y CALENDARIO ---
+      // SALUD Y GYM
+      const setMeal = (type, value) => { setPersonalData(prev => ({ ...prev, health: { ...prev.health, meals: { ...prev.health.meals, [selectedDate]: { ...(prev.health.meals[selectedDate] || {}), [type]: value } } } })); };
+      const setWorkoutGeneral = (field, value) => { setPersonalData(prev => ({ ...prev, health: { ...prev.health, workouts: { ...prev.health.workouts, [selectedDate]: { ...(prev.health.workouts[selectedDate] || { exercises: [] }), [field]: value } } } })); };
+      const loadRoutine = (target) => { const routineExercises = GYM_CATALOG.filter(e => e.target === target).map(e => ({ id: Date.now() + Math.random(), name: e.name, series: e.defaultSeries, reps: e.defaultReps, weight: 0, done: false })); setPersonalData(prev => { const currentDay = prev.health.workouts[selectedDate] || { exercises: [] }; return { ...prev, health: { ...prev.health, workouts: { ...prev.health.workouts, [selectedDate]: { ...currentDay, type: target, exercises: [...currentDay.exercises, ...routineExercises] } } } }; }); showToast(`Rutina de ${target} cargada`); };
+      const updateGymExercise = (exId, field, value) => { setPersonalData(prev => { const currentDay = prev.health.workouts[selectedDate]; if (!currentDay) return prev; return { ...prev, health: { ...prev.health, workouts: { ...prev.health.workouts, [selectedDate]: { ...currentDay, exercises: currentDay.exercises.map(ex => ex.id === exId ? { ...ex, [field]: value } : ex) } } } }; }); };
+      const deleteGymExercise = (exId) => { setPersonalData(prev => { const currentDay = prev.health.workouts[selectedDate]; if (!currentDay) return prev; return { ...prev, health: { ...prev.health, workouts: { ...prev.health.workouts, [selectedDate]: { ...currentDay, exercises: currentDay.exercises.filter(ex => ex.id !== exId) } } } }; }); };
+      const currentMeals = personalData.health.meals[selectedDate] || { desayuno: '', comida: '', cena: '', snacks: '' };
+      const currentWorkout = personalData.health.workouts[selectedDate] || { type: '', duration: '', energy: 0, exercises: [] };
+
+      // EXTRAS
       const toggleMatrixHabit = (habitName, date) => setPersonalData(prev => { const newMatrix = { ...prev.habitMatrix }; if (!newMatrix[habitName]) newMatrix[habitName] = {}; newMatrix[habitName][date] = !newMatrix[habitName][date]; return { ...prev, habitMatrix: newMatrix }; });
       const addNewMatrixHabit = (habitName) => { if(habitName) { setPersonalData(prev => ({ ...prev, habitMatrix: { ...prev.habitMatrix, [habitName]: {} } })); showToast("Hábito añadido"); } };
       const setMood = (date, score) => setPersonalData(prev => ({ ...prev, moodLogs: { ...prev.moodLogs, [date]: score } }));
       const saveCalendarEvent = () => { if(showEventModal.date && showEventModal.text !== null) { setPersonalData(prev => ({ ...prev, calendarEvents: { ...prev.calendarEvents, [showEventModal.date]: showEventModal.text } })); } setShowEventModal({ show: false, date: null, text: '' }); };
       const changeTheme = (themeName) => { setPersonalData(prev => ({...prev, theme: themeName})); showToast(`Tema ${themeName} aplicado`); };
-      const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (event) => { setCoverImage(event.target.result); localStorage.setItem('bitacora_cover_img', event.target.result); showToast('Fondo guardado'); };
-          reader.readAsDataURL(file);
-        }
-      };
+      const handleImageUpload = (e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (event) => { setCoverImage(event.target.result); localStorage.setItem('bitacora_cover_img', event.target.result); showToast('Fondo guardado'); }; reader.readAsDataURL(file); } };
 
       // --- VISTAS ---
       const WelcomeCover = () => {
-         // Asegurar que activeQuoteIndex esté dentro del rango
          const currentQuoteIndex = personalData.activeQuoteIndex < personalData.quotes.length ? personalData.activeQuoteIndex : 0;
-
          return (
             <div className="h-full w-full flex flex-col items-center justify-center p-12 relative overflow-hidden bg-theme-bg">
               {coverImage ? (
@@ -465,9 +354,7 @@
                    {personalData.appTitle || 'Agenda - Bitácora'}
                 </h1>
                 <div className="mb-20 px-4 min-h-[100px] cursor-pointer" onClick={() => setPersonalData(prev => ({...prev, activeQuoteIndex: (prev.activeQuoteIndex + 1) % prev.quotes.length}))} title="Haz clic para ver otra frase">
-                   <p className="text-3xl md:text-5xl font-serif italic text-theme-dark leading-tight max-w-4xl mx-auto drop-shadow-sm">
-                      "{personalData.quotes[currentQuoteIndex]}"
-                   </p>
+                   <p className="text-3xl md:text-5xl font-serif italic text-theme-dark leading-tight max-w-4xl mx-auto drop-shadow-sm">"{personalData.quotes[currentQuoteIndex]}"</p>
                 </div>
                 <div className="flex flex-col items-center gap-6">
                   <button onClick={() => setViewMode('daily')} className="group relative inline-flex items-center gap-6 bg-gradient-to-r from-theme-main to-theme-sec text-white px-16 py-7 rounded-full font-bold text-lg tracking-[0.3em] uppercase shadow-2xl hover:scale-105 active:scale-95 transition-all ring-offset-4 ring-8 ring-theme-surface"><span>ENTRAR</span><ChevronRight size={24} className="group-hover:translate-x-2 transition-transform" /></button>
@@ -511,11 +398,21 @@
                 <button onClick={() => setViewMode('calendar')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'calendar' ? 'bg-theme-accent text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><CalendarDays size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Calendario</span></button>
                 <button onClick={() => setViewMode('finance')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'finance' ? 'bg-theme-dark text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><Wallet size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Cartera</span></button>
                 <button onClick={() => setViewMode('personal')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'personal' ? 'bg-theme-sec text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><User size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Personal</span></button>
-                
                 <button onClick={() => setViewMode('health')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'health' ? 'bg-[#FF9B85] text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><HeartPulse size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Salud</span></button>
-                
                 <button onClick={() => setViewMode('settings')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'settings' ? 'bg-slate-700 text-white shadow-lg' : 'hover:bg-theme-surface text-slate-400'}`}><Settings size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Config</span></button>
-                <div className="pt-8 border-t border-theme-surface mt-4"><p className="text-[10px] font-bold text-slate-400 px-4 mb-4 uppercase tracking-widest">Grupos</p>{groups.map(g => (<button key={g.id} onClick={() => { setViewMode('groups'); setActiveGroupId(g.id); }} className={`w-full flex items-center p-3 rounded-2xl mb-1 transition-all ${viewMode === 'groups' && activeGroupId === g.id ? 'bg-theme-surface' : 'hover:bg-slate-50'}`}><div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ backgroundColor: g.color }}>{g.name[0]}</div><div className="ml-4 text-left hidden md:block overflow-hidden"><p className="font-semibold text-xs truncate">{g.name}</p></div></button>))}</div>
+                
+                <div className="pt-8 border-t border-theme-surface mt-4">
+                  <p className="text-[10px] font-bold text-slate-400 px-4 mb-4 uppercase tracking-widest">Grupos</p>
+                  {groups.map(g => (
+                     <button key={g.id} onClick={() => { setViewMode('groups'); setActiveGroupId(g.id); }} className={`w-full flex items-center p-3 rounded-2xl mb-1 transition-all ${viewMode === 'groups' && activeGroupId === g.id ? 'bg-theme-surface' : 'hover:bg-slate-50'}`}>
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ backgroundColor: g.color }}>{g.name[0]}</div>
+                        <div className="ml-4 text-left hidden md:block overflow-hidden">
+                           <p className="font-semibold text-xs truncate text-slate-700">{g.name}</p>
+                           <p className="text-[9px] text-slate-400 truncate mt-0.5 tracking-wider">{g.days?.map(d=>d.substring(0,2)).join(', ')} {g.days?.length>0?'•':''} {g.time}</p>
+                        </div>
+                     </button>
+                  ))}
+                </div>
               </div>
             </aside>
           )}
@@ -530,7 +427,10 @@
             {viewMode === 'daily' && (
               <div className="flex-1 p-10 overflow-y-auto max-w-7xl mx-auto w-full custom-scrollbar">
                 <header className="mb-10 flex justify-between items-end border-b border-theme-surface pb-8">
-                  <div><p className="text-[12px] font-bold text-theme-main uppercase tracking-widest mb-2 italic">Mi Agenda Hoy</p><h2 className="text-6xl font-serif font-bold text-theme-dark italic tracking-tighter">Control Diario</h2></div>
+                  <div>
+                     <p className="text-[12px] font-bold text-theme-main uppercase tracking-widest mb-2 italic">Mi Agenda Hoy • {currentDayName}</p>
+                     <h2 className="text-6xl font-serif font-bold text-theme-dark italic tracking-tighter">Control Diario</h2>
+                  </div>
                   <div className="flex flex-col items-end gap-3">
                     <div className="bg-white p-3 px-5 rounded-2xl border border-theme-surface shadow-sm flex items-center gap-2">
                        <button onClick={() => { const d = new Date(selectedDate+'T12:00:00'); d.setDate(d.getDate()-1); setSelectedDate(d.toISOString().split('T')[0]); }} className="text-slate-300 hover:text-theme-main"><ArrowLeft size={16}/></button>
@@ -542,10 +442,7 @@
                 </header>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                   <div className="lg:col-span-2 space-y-6">
-                    {groups
-                      .filter(g => g.sessions?.some(s => s.date === selectedDate))
-                      .sort((a,b) => a.time.localeCompare(b.time))
-                      .map(g => {
+                    {groupsToday.map(g => {
                       const daySess = g.sessions?.filter(s => s.date === selectedDate).sort((a,b) => a.id - b.id);
                       return (
                         <div key={g.id} className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100 relative overflow-hidden group">
@@ -553,12 +450,19 @@
                           <div className="flex items-center justify-between mb-6 relative z-10">
                             <div className="flex items-center gap-4">
                               <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold shadow-sm" style={{backgroundColor:g.color}}>{g.name.match(/\d+/)?.[0] || g.name[0]}</div>
-                              <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">{g.subject}</p><p className="font-bold text-slate-700 italic text-lg">{g.name}</p></div>
+                              <div>
+                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">{g.subject}</p>
+                                 <p className="font-bold text-slate-700 italic text-lg">{g.name}</p>
+                              </div>
                             </div>
-                            <span className="text-xs font-bold text-theme-main bg-theme-surface px-4 py-1.5 rounded-full flex items-center gap-2"><Clock size={12}/> {g.time} hrs</span>
+                            <div className="flex flex-col items-end gap-1">
+                               <span className="text-xs font-bold text-theme-main bg-theme-surface px-4 py-1.5 rounded-full flex items-center gap-2"><Clock size={12}/> {g.time} hrs</span>
+                               {g.days?.includes(currentDayName) && <span className="text-[9px] uppercase tracking-widest text-slate-400 font-bold px-2">Clase Habitual</span>}
+                            </div>
                           </div>
+                          
                           <div className="space-y-3 relative z-10">
-                            {daySess.map(s => {
+                            {daySess.length > 0 ? daySess.map(s => {
                               const item = s.type === 'tema' ? g.topics.find(t=>t.id===s.contentId) : s.type === 'ada' ? g.adas.find(a=>a.id===s.contentId) : g.tasks.find(t=>t.id===s.contentId);
                               return (
                                 <div key={s.id} className="flex items-start gap-3 p-4 bg-slate-50/70 border border-slate-100 rounded-2xl group/item">
@@ -569,13 +473,23 @@
                                   </div>
                                 </div>
                               );
-                            })}
+                            }) : (
+                               <div className="p-4 border-2 border-dashed border-theme-surface rounded-2xl flex flex-col items-center justify-center text-slate-400 bg-slate-50/30">
+                                  <CalendarClock size={24} className="mb-2 opacity-50 text-theme-main" />
+                                  <p className="text-[11px] uppercase tracking-widest font-bold mb-1">Clase sin planear</p>
+                                  <p className="text-xs italic">Abre el grupo en el menú para programarle un tema o ADA hoy.</p>
+                               </div>
+                            )}
                           </div>
                         </div>
                       );
                     })}
-                    {groups.every(g => !g.sessions?.some(s => s.date === selectedDate)) && (
-                      <div className="col-span-full py-16 flex flex-col items-center text-center text-slate-300"><CalendarDays size={60} className="opacity-20 mb-4"/><p className="italic text-sm">El día está libre. No tienes registros para hoy.</p></div>
+                    {groupsToday.length === 0 && (
+                      <div className="col-span-full py-16 flex flex-col items-center text-center text-slate-300">
+                         <CalendarDays size={60} className="opacity-20 mb-4 text-theme-main"/>
+                         <p className="italic text-sm text-slate-500 font-bold mb-1">No tienes grupos asignados para los {currentDayName}s.</p>
+                         <p className="text-xs uppercase tracking-widest text-slate-400">Ni sesiones extras programadas hoy.</p>
+                      </div>
                     )}
                   </div>
                   <div className="bg-white p-8 rounded-[4rem] border border-theme-surface shadow-xl h-fit">
@@ -598,13 +512,8 @@
               <div className="flex-1 p-10 overflow-y-auto max-w-7xl mx-auto w-full custom-scrollbar">
                 <header className="mb-10 flex justify-between items-end border-b border-theme-surface pb-8">
                   <div><p className="text-[12px] font-bold text-[#FF9B85] uppercase tracking-widest mb-2 italic">Mi Templo</p><h2 className="text-6xl font-serif font-bold text-theme-dark italic tracking-tighter">Salud & Bienestar</h2></div>
-                  
-                  {/* BOTÓN INICIAR MODO GYM */}
-                  <button onClick={() => setShowGymModal(true)} className="flex items-center gap-3 bg-gradient-to-r from-theme-dark to-theme-sec text-white px-8 py-4 rounded-full font-bold text-xs tracking-widest uppercase shadow-xl hover:scale-105 transition-all">
-                     <Play size={16} fill="white"/> Iniciar Entrenamiento
-                  </button>
+                  <button onClick={() => setShowGymModal(true)} className="flex items-center gap-3 bg-gradient-to-r from-theme-dark to-theme-sec text-white px-8 py-4 rounded-full font-bold text-xs tracking-widest uppercase shadow-xl hover:scale-105 transition-all"><Play size={16} fill="white"/> Iniciar Entrenamiento</button>
                 </header>
-
                 <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg mb-8 relative overflow-hidden">
                    <div className="absolute -right-10 -top-10 text-[#FF9B85] opacity-10"><Activity size={200} /></div>
                    <h3 className="text-xs font-bold uppercase text-theme-dark mb-8 tracking-[0.3em] flex items-center gap-3 italic relative z-10"><Activity size={18} /> Vitalidad (Semana Actual)</h3>
@@ -612,106 +521,47 @@
                       <div>
                          <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Hidratación (Vasos)</p>
                          <div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">
-                            {weekDays.map((d, i) => {
-                               const w = personalData.waterLogs?.[d] || 0;
-                               return (
-                                  <div key={`water-${d}`} className="flex flex-col items-center gap-2 w-full">
-                                     <div className="w-full flex justify-center h-full items-end">
-                                        <div className="w-4 bg-blue-300 rounded-t-lg transition-all shadow-sm opacity-80" style={{height: `${Math.max(10, (w/5)*100)}%`}}></div>
-                                     </div>
-                                     <span className="text-[9px] text-slate-400 font-bold">{['L','M','M','J','V','S','D'][i]}</span>
-                                  </div>
-                               )
-                            })}
+                            {weekDays.map((d, i) => { const w = personalData.waterLogs?.[d] || 0; return (<div key={`water-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end"><div className="w-4 bg-blue-300 rounded-t-lg transition-all shadow-sm opacity-80" style={{height: `${Math.max(10, (w/5)*100)}%`}}></div></div><span className="text-[9px] text-slate-400 font-bold">{['L','M','M','J','V','S','D'][i]}</span></div>) })}
                          </div>
                       </div>
                       <div>
                          <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Energía Física (Rayitos)</p>
                          <div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">
-                            {weekDays.map((d, i) => {
-                               const energy = personalData.health?.workouts?.[d]?.energy || 0;
-                               return (
-                                  <div key={`energy-${d}`} className="flex flex-col items-center gap-2 w-full">
-                                     <div className="w-full flex justify-center h-full items-end">
-                                        <div className="w-4 bg-[#FF9B85] rounded-t-lg transition-all shadow-sm opacity-80" style={{height: `${Math.max(10, (energy/5)*100)}%`}}></div>
-                                     </div>
-                                     <span className="text-[9px] text-slate-400 font-bold">{['L','M','M','J','V','S','D'][i]}</span>
-                                  </div>
-                               )
-                            })}
+                            {weekDays.map((d, i) => { const energy = personalData.health?.workouts?.[d]?.energy || 0; return (<div key={`energy-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end"><div className="w-4 bg-[#FF9B85] rounded-t-lg transition-all shadow-sm opacity-80" style={{height: `${Math.max(10, (energy/5)*100)}%`}}></div></div><span className="text-[9px] text-slate-400 font-bold">{['L','M','M','J','V','S','D'][i]}</span></div>) })}
                          </div>
                       </div>
                    </div>
                 </section>
-
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   <div className="space-y-8">
                     <section className="bg-white p-10 rounded-[3.5rem] border border-theme-surface shadow-lg">
                        <h3 className="text-[10px] font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2 italic"><Droplet size={14}/> Lo Básico</h3>
                        <div className="space-y-8">
                           <div>
-                             <div className="flex items-center justify-between mb-4">
-                                <span className="text-sm font-bold text-slate-600 italic tracking-tight">Agua Hoy</span>
-                                <span className="text-xs font-bold text-blue-400">{personalData.waterLogs?.[selectedDate] || 0}/5 Vasos</span>
-                             </div>
-                             <div className="flex justify-between gap-1.5">
-                                {[1,2,3,4,5].map(i => {
-                                   const currentWater = personalData.waterLogs?.[selectedDate] || 0;
-                                   return (
-                                     <button key={`waterbtn-${i}`} onClick={() => setPersonalData(p=>({...p, waterLogs: {...(p.waterLogs||{}), [selectedDate]: i}}))} className={`flex-1 h-10 rounded-2xl transition-transform active:scale-90 flex items-center justify-center ${currentWater >= i ? 'bg-blue-400 shadow-md text-white' : 'bg-slate-50 border border-slate-100 text-slate-300'}`}><Droplet size={16} fill={currentWater >= i ? 'white' : 'none'} /></button>
-                                   )
-                                })}
-                             </div>
+                             <div className="flex items-center justify-between mb-4"><span className="text-sm font-bold text-slate-600 italic tracking-tight">Agua Hoy</span><span className="text-xs font-bold text-blue-400">{personalData.waterLogs?.[selectedDate] || 0}/5 Vasos</span></div>
+                             <div className="flex justify-between gap-1.5">{[1,2,3,4,5].map(i => { const currentWater = personalData.waterLogs?.[selectedDate] || 0; return (<button key={`waterbtn-${i}`} onClick={() => setPersonalData(p=>({...p, waterLogs: {...(p.waterLogs||{}), [selectedDate]: i}}))} className={`flex-1 h-10 rounded-2xl transition-transform active:scale-90 flex items-center justify-center ${currentWater >= i ? 'bg-blue-400 shadow-md text-white' : 'bg-slate-50 border border-slate-100 text-slate-300'}`}><Droplet size={16} fill={currentWater >= i ? 'white' : 'none'} /></button>) })}</div>
                           </div>
                           <div className="border-t border-slate-50 pt-6">
-                             <div className="flex items-center justify-between mb-4">
-                                <span className="text-sm font-bold text-slate-600 italic tracking-tight">Horario de Sueño</span>
-                                <Moon size={16} className="text-indigo-400"/>
-                             </div>
-                             <div className="flex gap-3">
-                               <input type="time" value={personalData.sleep?.start || '22:00'} onChange={(e)=>setPersonalData(p=>({...p, sleep: {...p.sleep, start: e.target.value}}))} className="flex-1 text-xs font-bold text-slate-600 bg-slate-50 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-100 text-center" />
-                               <input type="time" value={personalData.sleep?.end || '06:00'} onChange={(e)=>setPersonalData(p=>({...p, sleep: {...p.sleep, end: e.target.value}}))} className="flex-1 text-xs font-bold text-slate-600 bg-slate-50 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-100 text-center" />
-                             </div>
+                             <div className="flex items-center justify-between mb-4"><span className="text-sm font-bold text-slate-600 italic tracking-tight">Horario de Sueño</span><Moon size={16} className="text-indigo-400"/></div>
+                             <div className="flex gap-3"><input type="time" value={personalData.sleep?.start || '22:00'} onChange={(e)=>setPersonalData(p=>({...p, sleep: {...p.sleep, start: e.target.value}}))} className="flex-1 text-xs font-bold text-slate-600 bg-slate-50 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-100 text-center" /><input type="time" value={personalData.sleep?.end || '06:00'} onChange={(e)=>setPersonalData(p=>({...p, sleep: {...p.sleep, end: e.target.value}}))} className="flex-1 text-xs font-bold text-slate-600 bg-slate-50 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-100 text-center" /></div>
                           </div>
                        </div>
                     </section>
-
                     <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg text-center cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setShowGymModal(true)}>
-                       <div className="w-16 h-16 bg-[#FF9B85] rounded-full mx-auto flex items-center justify-center text-white mb-4 shadow-lg">
-                          <Dumbbell size={24} />
-                       </div>
+                       <div className="w-16 h-16 bg-[#FF9B85] rounded-full mx-auto flex items-center justify-center text-white mb-4 shadow-lg"><Dumbbell size={24} /></div>
                        <h3 className="text-sm font-bold text-slate-700 italic mb-2">Entrenamiento del Día</h3>
-                       <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-4">
-                          {currentWorkout.exercises?.length > 0 ? `${currentWorkout.exercises.filter(e=>e.done).length}/${currentWorkout.exercises.length} Ejercicios` : 'Aún no has entrenado'}
-                       </p>
+                       <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-4">{currentWorkout.exercises?.length > 0 ? `${currentWorkout.exercises.filter(e=>e.done).length}/${currentWorkout.exercises.length} Ejercicios` : 'Aún no has entrenado'}</p>
                        <p className="text-xs text-theme-main underline italic">Toca para abrir el Gym Tracker</p>
                     </section>
                   </div>
-                  
                   <div className="lg:col-span-2">
                      <section className="bg-white p-10 rounded-[4rem] border border-theme-surface shadow-xl h-full flex flex-col">
                         <h3 className="text-xs font-bold uppercase text-slate-400 mb-8 tracking-widest flex items-center gap-2 italic"><Utensils size={16}/> Bitácora de Alimentación</h3>
-                        
                         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
-                           <div className="bg-slate-50/50 p-6 rounded-[2.5rem] border border-slate-100 flex flex-col">
-                              <h4 className="text-[10px] font-bold uppercase text-[#FF9B85] tracking-widest mb-3 flex items-center gap-2"><Coffee size={14}/> Desayuno</h4>
-                              <textarea value={currentMeals.desayuno} onChange={(e) => setMeal('desayuno', e.target.value)} placeholder="Avena con fresas, café..." className="flex-1 w-full bg-transparent resize-none focus:outline-none text-sm italic text-slate-600 custom-scrollbar"></textarea>
-                           </div>
-                           
-                           <div className="bg-slate-50/50 p-6 rounded-[2.5rem] border border-slate-100 flex flex-col">
-                              <h4 className="text-[10px] font-bold uppercase text-[#FF9B85] tracking-widest mb-3 flex items-center gap-2"><Utensils size={14}/> Comida</h4>
-                              <textarea value={currentMeals.comida} onChange={(e) => setMeal('comida', e.target.value)} placeholder="Pollo asado, ensalada..." className="flex-1 w-full bg-transparent resize-none focus:outline-none text-sm italic text-slate-600 custom-scrollbar"></textarea>
-                           </div>
-
-                           <div className="bg-slate-50/50 p-6 rounded-[2.5rem] border border-slate-100 flex flex-col">
-                              <h4 className="text-[10px] font-bold uppercase text-[#FF9B85] tracking-widest mb-3 flex items-center gap-2"><Moon size={14}/> Cena</h4>
-                              <textarea value={currentMeals.cena} onChange={(e) => setMeal('cena', e.target.value)} placeholder="Sándwich ligero, té de manzanilla..." className="flex-1 w-full bg-transparent resize-none focus:outline-none text-sm italic text-slate-600 custom-scrollbar"></textarea>
-                           </div>
-
-                           <div className="bg-slate-50/50 p-6 rounded-[2.5rem] border border-slate-100 flex flex-col">
-                              <h4 className="text-[10px] font-bold uppercase text-[#FF9B85] tracking-widest mb-3 flex items-center gap-2"><Flame size={14}/> Snacks / Antojos</h4>
-                              <textarea value={currentMeals.snacks} onChange={(e) => setMeal('snacks', e.target.value)} placeholder="Almendras, un chocolate..." className="flex-1 w-full bg-transparent resize-none focus:outline-none text-sm italic text-slate-600 custom-scrollbar"></textarea>
-                           </div>
+                           <div className="bg-slate-50/50 p-6 rounded-[2.5rem] border border-slate-100 flex flex-col"><h4 className="text-[10px] font-bold uppercase text-[#FF9B85] tracking-widest mb-3 flex items-center gap-2"><Coffee size={14}/> Desayuno</h4><textarea value={currentMeals.desayuno} onChange={(e) => setMeal('desayuno', e.target.value)} placeholder="Avena con fresas, café..." className="flex-1 w-full bg-transparent resize-none focus:outline-none text-sm italic text-slate-600 custom-scrollbar"></textarea></div>
+                           <div className="bg-slate-50/50 p-6 rounded-[2.5rem] border border-slate-100 flex flex-col"><h4 className="text-[10px] font-bold uppercase text-[#FF9B85] tracking-widest mb-3 flex items-center gap-2"><Utensils size={14}/> Comida</h4><textarea value={currentMeals.comida} onChange={(e) => setMeal('comida', e.target.value)} placeholder="Pollo asado, ensalada..." className="flex-1 w-full bg-transparent resize-none focus:outline-none text-sm italic text-slate-600 custom-scrollbar"></textarea></div>
+                           <div className="bg-slate-50/50 p-6 rounded-[2.5rem] border border-slate-100 flex flex-col"><h4 className="text-[10px] font-bold uppercase text-[#FF9B85] tracking-widest mb-3 flex items-center gap-2"><Moon size={14}/> Cena</h4><textarea value={currentMeals.cena} onChange={(e) => setMeal('cena', e.target.value)} placeholder="Sándwich ligero, té de manzanilla..." className="flex-1 w-full bg-transparent resize-none focus:outline-none text-sm italic text-slate-600 custom-scrollbar"></textarea></div>
+                           <div className="bg-slate-50/50 p-6 rounded-[2.5rem] border border-slate-100 flex flex-col"><h4 className="text-[10px] font-bold uppercase text-[#FF9B85] tracking-widest mb-3 flex items-center gap-2"><Flame size={14}/> Snacks / Antojos</h4><textarea value={currentMeals.snacks} onChange={(e) => setMeal('snacks', e.target.value)} placeholder="Almendras, un chocolate..." className="flex-1 w-full bg-transparent resize-none focus:outline-none text-sm italic text-slate-600 custom-scrollbar"></textarea></div>
                         </div>
                      </section>
                   </div>
@@ -724,61 +574,31 @@
                 <header className="mb-10 flex justify-between items-end border-b border-theme-surface pb-8">
                   <div><p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mb-2 italic">Mi Diario</p><h2 className="text-6xl font-serif font-bold text-theme-dark italic tracking-tighter">Personal & Trackers</h2></div>
                 </header>
-
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   <div className="lg:col-span-2 space-y-8">
-                    
                     <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg relative overflow-hidden">
                        <h3 className="text-xs font-bold uppercase text-theme-dark mb-8 tracking-[0.3em] flex items-center gap-3 italic relative z-10"><TrendingUp size={18} /> Bujo Analytics (Semana Actual)</h3>
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 relative z-10">
                           <div>
                              <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Mood Chart</p>
                              <div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">
-                                {weekDays.map((d, i) => {
-                                   const m = personalData.moodLogs?.[d] || 0;
-                                   const heights = {0: '10%', 1: '30%', 2: '60%', 3: '90%'};
-                                   const colors = {0: 'transparent', 1: 'var(--theme-dark)', 2: 'var(--theme-sec)', 3: 'var(--theme-main)'};
-                                   return (
-                                      <div key={`mood-${d}`} className="flex flex-col items-center gap-2 w-full">
-                                         <div className="w-full flex justify-center h-full items-end">
-                                            <div className="w-4 rounded-full transition-all shadow-sm" style={{height: heights[m], backgroundColor: colors[m]}}></div>
-                                         </div>
-                                         <span className="text-[9px] text-slate-400 font-bold">{['L','M','M','J','V','S','D'][i]}</span>
-                                      </div>
-                                   )
-                                })}
+                                {weekDays.map((d, i) => { const m = personalData.moodLogs?.[d] || 0; const heights = {0: '10%', 1: '30%', 2: '60%', 3: '90%'}; const colors = {0: 'transparent', 1: 'var(--theme-dark)', 2: 'var(--theme-sec)', 3: 'var(--theme-main)'}; return (<div key={`mood-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end"><div className="w-4 rounded-full transition-all shadow-sm" style={{height: heights[m], backgroundColor: colors[m]}}></div></div><span className="text-[9px] text-slate-400 font-bold">{['L','M','M','J','V','S','D'][i]}</span></div>) })}
                              </div>
                           </div>
                           <div>
                              <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Top Hábitos</p>
                              <div className="space-y-4">
-                                {Object.keys(personalData.habitMatrix).slice(0,3).map(habit => {
-                                   const completions = weekDays.filter(d => personalData.habitMatrix[habit]?.[d]).length;
-                                   const percent = Math.round((completions/7)*100);
-                                   return (
-                                      <div key={`prog-${habit}`}>
-                                         <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-1.5 italic">
-                                            <span className="truncate w-28">{habit}</span>
-                                            <span className="text-theme-main">{percent}%</span>
-                                         </div>
-                                         <div className="w-full h-2 bg-theme-surface rounded-full overflow-hidden shadow-inner">
-                                            <div className="h-full bg-theme-main transition-all rounded-full" style={{width: `${percent}%`}}></div>
-                                         </div>
-                                      </div>
-                                   )
-                                })}
+                                {Object.keys(personalData.habitMatrix).slice(0,3).map(habit => { const completions = weekDays.filter(d => personalData.habitMatrix[habit]?.[d]).length; const percent = Math.round((completions/7)*100); return (<div key={`prog-${habit}`}><div className="flex justify-between text-[10px] font-bold text-slate-500 mb-1.5 italic"><span className="truncate w-28">{habit}</span><span className="text-theme-main">{percent}%</span></div><div className="w-full h-2 bg-theme-surface rounded-full overflow-hidden shadow-inner"><div className="h-full bg-theme-main transition-all rounded-full" style={{width: `${percent}%`}}></div></div></div>) })}
                                 {Object.keys(personalData.habitMatrix).length === 0 && <p className="text-[10px] text-slate-400 italic text-center mt-6">Añade hábitos en Configuración.</p>}
                              </div>
                           </div>
                        </div>
                     </section>
-
                     <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg">
                        <h3 className="text-xs font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2 italic"><ListChecks size={16} /> Habit Tracker Semanal</h3>
                        <div className="overflow-x-auto"><table className="w-full border-separate border-spacing-2"><thead><tr><th className="text-left text-[11px] font-bold text-slate-300 uppercase p-3 tracking-widest">Objetivo</th>{['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, idx) => (<th key={`${d}-${idx}`} className="text-center text-[11px] font-bold text-slate-300 p-3">{d}</th>))}</tr></thead><tbody>{Object.keys(personalData.habitMatrix).map(habit => (<tr key={habit}><td className="text-base font-semibold text-slate-600 p-3 italic">{habit}</td>{[0,1,2,3,4,5,6].map(i => { const dayDate = new Date(); dayDate.setDate(dayDate.getDate() - dayDate.getDay() + (i + 1)); const dStr = dayDate.toISOString().split('T')[0]; const isActive = personalData.habitMatrix[habit][dStr]; return (<td key={`${habit}-${i}`} className="text-center p-2"><button onClick={() => toggleMatrixHabit(habit, dStr)} className={`w-10 h-10 rounded-xl border-2 transition-all flex items-center justify-center ${isActive ? 'bg-theme-main border-transparent text-white shadow-lg scale-110' : 'bg-slate-50 border-slate-100 hover:border-theme-surface'}`}>{isActive && <Check size={18} />}</button></td>);})}</tr>))}</tbody></table></div>
                     </section>
                   </div>
-                  
                   <div className="space-y-8">
                     <section className="bg-white p-10 rounded-[3.5rem] border border-theme-surface shadow-xl text-center">
                        <h3 className="text-[11px] font-bold uppercase text-slate-300 mb-8 tracking-[0.4em] italic">Mood del Día</h3>
@@ -788,22 +608,13 @@
                           <button onClick={() => setMood(selectedDate, 1)} className={`p-5 rounded-[2rem] transition-all ${personalData.moodLogs[selectedDate] === 1 ? 'bg-theme-dark text-white shadow-2xl scale-110' : 'bg-slate-50 text-slate-300 hover:bg-theme-surface'}`}><Frown size={36}/></button>
                        </div>
                     </section>
-
                     <section className="bg-theme-surface/50 p-10 rounded-[3.5rem] border border-theme-surface shadow-lg h-[400px] flex flex-col">
                        <h3 className="text-[11px] font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2 italic"><ClipboardList size={14}/> Pendientes Personales</h3>
                        <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
-                          {personalData.tasks?.map(t => (
-                            <div key={t.id} onClick={() => setPersonalData(p => ({...p, tasks: p.tasks.map(x => x.id === t.id ? {...x, done: !x.done} : x)}))} className="flex items-center gap-3 p-3 bg-white rounded-[1.5rem] cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-theme-surface group">
-                              {t.done ? <CheckCircle2 size={18} className="text-theme-main" /> : <Circle size={18} className="text-slate-300 group-hover:text-theme-main" />}
-                              <span className={`text-[13px] italic flex-1 ${t.done ? 'line-through text-slate-300 opacity-50' : 'text-slate-600'}`}>{t.text}</span>
-                              <button onClick={(e) => { e.stopPropagation(); setPersonalData(p=>({...p, tasks: p.tasks.filter(x=>x.id !== t.id)})); }} className="opacity-0 group-hover:opacity-100 text-red-200 hover:text-red-400"><Trash2 size={14}/></button>
-                            </div>
-                          ))}
+                          {personalData.tasks?.map(t => (<div key={t.id} onClick={() => setPersonalData(p => ({...p, tasks: p.tasks.map(x => x.id === t.id ? {...x, done: !x.done} : x)}))} className="flex items-center gap-3 p-3 bg-white rounded-[1.5rem] cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-theme-surface group">{t.done ? <CheckCircle2 size={18} className="text-theme-main" /> : <Circle size={18} className="text-slate-300 group-hover:text-theme-main" />}<span className={`text-[13px] italic flex-1 ${t.done ? 'line-through text-slate-300 opacity-50' : 'text-slate-600'}`}>{t.text}</span><button onClick={(e) => { e.stopPropagation(); setPersonalData(p=>({...p, tasks: p.tasks.filter(x=>x.id !== t.id)})); }} className="opacity-0 group-hover:opacity-100 text-red-200 hover:text-red-400"><Trash2 size={14}/></button></div>))}
                           {personalData.tasks?.length === 0 && <p className="text-center text-xs text-slate-400 italic py-10">Agrega algo que tengas que hacer.</p>}
                        </div>
-                       <div className="mt-4">
-                          <input type="text" placeholder="+ Recordatorio..." className="w-full p-4 bg-white rounded-[2rem] text-sm focus:outline-none italic transition-all shadow-sm border border-transparent focus:border-theme-main text-slate-600" onKeyDown={(e) => { if(e.key === 'Enter' && e.target.value) { setPersonalData(p => ({...p, tasks: [...p.tasks, {id: Date.now(), text: e.target.value, done: false}]})); e.target.value = ''; } }} />
-                       </div>
+                       <div className="mt-4"><input type="text" placeholder="+ Recordatorio..." className="w-full p-4 bg-white rounded-[2rem] text-sm focus:outline-none italic transition-all shadow-sm border border-transparent focus:border-theme-main text-slate-600" onKeyDown={(e) => { if(e.key === 'Enter' && e.target.value) { setPersonalData(p => ({...p, tasks: [...p.tasks, {id: Date.now(), text: e.target.value, done: false}]})); e.target.value = ''; } }} /></div>
                     </section>
                   </div>
                 </div>
@@ -814,97 +625,12 @@
               <div className="flex-1 p-12 overflow-y-auto max-w-7xl mx-auto w-full custom-scrollbar">
                 <header className="mb-10 flex justify-between items-end border-b border-theme-surface pb-8">
                   <div><p className="text-[12px] font-bold text-theme-accent uppercase tracking-[0.4em] mb-2 italic">Visión General</p><h2 className="text-6xl font-serif font-bold text-theme-dark italic tracking-tighter">Mi Mes</h2></div>
-                  <div className="flex items-center gap-6 bg-white p-3 px-6 rounded-full border border-theme-surface shadow-md">
-                    <button onClick={() => setCurrentCalMonth(new Date(currentCalMonth.getFullYear(), currentCalMonth.getMonth() - 1, 1))} className="p-2 text-slate-300 hover:text-theme-main"><ArrowLeft size={24} /></button>
-                    <span className="text-lg font-bold text-theme-dark uppercase tracking-widest min-w-[150px] text-center">{currentCalMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</span>
-                    <button onClick={() => setCurrentCalMonth(new Date(currentCalMonth.getFullYear(), currentCalMonth.getMonth() + 1, 1))} className="p-2 text-slate-300 hover:text-theme-main"><ArrowRight size={24} /></button>
-                  </div>
+                  <div className="flex items-center gap-6 bg-white p-3 px-6 rounded-full border border-theme-surface shadow-md"><button onClick={() => setCurrentCalMonth(new Date(currentCalMonth.getFullYear(), currentCalMonth.getMonth() - 1, 1))} className="p-2 text-slate-300 hover:text-theme-main"><ArrowLeft size={24} /></button><span className="text-lg font-bold text-theme-dark uppercase tracking-widest min-w-[150px] text-center">{currentCalMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</span><button onClick={() => setCurrentCalMonth(new Date(currentCalMonth.getFullYear(), currentCalMonth.getMonth() + 1, 1))} className="p-2 text-slate-300 hover:text-theme-main"><ArrowRight size={24} /></button></div>
                 </header>
                 <div className="bg-white p-8 rounded-[4rem] border border-theme-surface shadow-xl"><div className="grid grid-cols-7 gap-4 mb-4">{['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d=>(<div key={d} className="text-center text-[10px] font-bold uppercase tracking-widest text-theme-main opacity-70 p-2">{d}</div>))}<div className="grid grid-cols-7 gap-4 contents">
-                  {(() => {
-                    const year = currentCalMonth.getFullYear(); const month = currentCalMonth.getMonth();
-                    const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
-                    const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
-                    const cells = [];
-                    for(let i=0; i<adjustedFirstDay; i++) cells.push(<div key={`empty-${i}`} className="p-2 opacity-0"></div>);
-                    for(let day=1; day<=daysInMonth; day++) {
-                      const dateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                      const eventText = personalData.calendarEvents?.[dateStr];
-                      const isToday = dateStr === selectedDate;
-                      cells.push(
-                        <div key={day} onClick={() => setShowEventModal({show:true, date:dateStr, text: eventText || ''})} className={`min-h-[100px] p-3 border rounded-3xl transition-all cursor-pointer hover:shadow-md flex flex-col ${isToday ? 'bg-theme-surface border-theme-main' : 'bg-white border-theme-surface'}`}>
-                          <span className={`text-sm font-bold ${isToday ? 'text-theme-main' : 'text-slate-400'}`}>{day}</span>
-                          {eventText && <div className="mt-2 text-[10px] bg-theme-surface text-theme-dark p-2 rounded-xl leading-tight italic overflow-hidden line-clamp-3">{eventText}</div>}
-                        </div>
-                      );
-                    }
-                    return cells;
-                  })()}
+                  {(() => { const year = currentCalMonth.getFullYear(); const month = currentCalMonth.getMonth(); const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate(); const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; const cells = []; for(let i=0; i<adjustedFirstDay; i++) cells.push(<div key={`empty-${i}`} className="p-2 opacity-0"></div>); for(let day=1; day<=daysInMonth; day++) { const dateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const eventText = personalData.calendarEvents?.[dateStr]; const isToday = dateStr === selectedDate; cells.push(<div key={day} onClick={() => setShowEventModal({show:true, date:dateStr, text: eventText || ''})} className={`min-h-[100px] p-3 border rounded-3xl transition-all cursor-pointer hover:shadow-md flex flex-col ${isToday ? 'bg-theme-surface border-theme-main' : 'bg-white border-theme-surface'}`}><span className={`text-sm font-bold ${isToday ? 'text-theme-main' : 'text-slate-400'}`}>{day}</span>{eventText && <div className="mt-2 text-[10px] bg-theme-surface text-theme-dark p-2 rounded-xl leading-tight italic overflow-hidden line-clamp-3">{eventText}</div>}</div>); } return cells; })()}
                 </div></div></div>
               </div>
-            )}
-
-            {viewMode === 'groups' && activeGroup && (
-               <div className="flex-1 flex flex-col overflow-hidden">
-                 <header className="bg-white p-8 border-b border-theme-surface flex justify-between items-center shrink-0">
-                   <div>
-                     <h2 className="text-4xl font-serif font-bold text-theme-dark italic tracking-tight">{activeGroup.subject}</h2>
-                     <div className="flex items-center gap-6 mt-2">
-                       <span className="px-4 py-1 bg-theme-surface text-theme-main rounded-full text-[11px] font-bold uppercase tracking-widest">{activeGroup.name}</span>
-                       <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2"><Clock size={14}/> {activeGroup.time} hrs</span>
-                     </div>
-                   </div>
-                   <div className="flex gap-4">
-                     <button onClick={() => { setImportType('topics'); setShowImportModal(true); }} className="p-3 px-6 bg-theme-surface text-theme-main rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-white shadow-sm transition-all">Importar +</button>
-                     <button onClick={() => setShowResetModal(true)} className="p-3 px-4 bg-red-50 text-red-400 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-red-100 shadow-sm"><RotateCcw size={14}/></button>
-                   </div>
-                 </header>
-                 <div className="flex-1 flex p-8 gap-8 overflow-hidden">
-                    <section className="w-[35%] flex flex-col gap-8 overflow-hidden">
-                       <div className="bg-white rounded-[2.5rem] border border-theme-surface shadow-sm flex flex-col h-1/2 overflow-hidden">
-                          <div className="p-5 bg-theme-surface font-bold text-[10px] uppercase text-slate-500">Catálogo de Temas</div>
-                          <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
-                             {activeGroup.topics.map(t => (
-                               <div key={t.id} className="flex items-center p-3 bg-slate-50/50 rounded-2xl group border border-transparent hover:border-theme-surface transition-all">
-                                 <button onClick={() => toggleStatus('topics', t.id)} className={t.completed ? 'text-theme-main' : 'text-slate-300'}>{t.completed ? <CheckCircle2 size={18}/> : <Circle size={18}/>}</button>
-                                 <div className="flex-1 px-3"><p className={`text-xs font-semibold ${t.completed ? 'italic line-through text-slate-400' : 'text-slate-700'}`}>{t.title}</p></div>
-                                 <button onClick={() => setScheduleModal({show:true, itemType:'tema', itemId:t.id, itemName:t.title, date:selectedDate})} className="p-2 bg-theme-surface text-theme-main rounded-lg hover:scale-110 transition-transform"><PlusCircle size={20}/></button>
-                               </div>
-                             ))}
-                          </div>
-                       </div>
-                       <div className="bg-white rounded-[2.5rem] border border-theme-surface shadow-sm flex flex-col h-1/2 overflow-hidden">
-                          <div className="p-5 bg-theme-surface font-bold text-[10px] uppercase text-slate-500">ADAs y Tareas</div>
-                          <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
-                             {activeGroup.adas.map(a => (
-                               <div key={a.id} className="p-4 bg-theme-surface/40 rounded-3xl border border-white">
-                                  <div className="flex justify-between items-start mb-2"><p className={`text-xs font-bold ${a.completed ? 'line-through text-slate-400' : 'text-theme-dark'}`}>{a.title}</p><button onClick={() => setScheduleModal({show:true, itemType:'ada', itemId:a.id, itemName:a.title, date:selectedDate})} className="p-2 bg-white text-theme-main rounded-xl shadow-sm"><PlusCircle size={20}/></button></div>
-                                  <button onClick={() => toggleStatus('adas', a.id)} className="text-[9px] font-bold uppercase tracking-widest text-theme-sec">{a.completed ? '✓ Calificada' : 'Pendiente Calificar'}</button>
-                               </div>
-                             ))}
-                          </div>
-                       </div>
-                    </section>
-                    <section className="flex-1 bg-white rounded-[3rem] border border-theme-surface shadow-sm flex flex-col overflow-hidden">
-                       <div className="p-5 bg-theme-surface font-bold text-[10px] uppercase text-slate-500">Cronograma y Bitácora</div>
-                       <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-                          {activeGroup.sessions?.map((s, idx) => {
-                             const item = s.type === 'tema' ? activeGroup.topics.find(t=>t.id===s.contentId) : activeGroup.adas.find(a=>a.id===s.contentId);
-                             return (
-                               <div key={s.id} className={`p-6 rounded-[2.5rem] border transition-all ${idx === 0 ? 'border-theme-main bg-theme-surface/30' : 'border-slate-50 bg-slate-50/30'}`}>
-                                  <div className="flex justify-between items-center mb-4"><span className="text-[10px] font-bold text-theme-main italic uppercase">{s.date}</span><span className="text-[8px] px-2 py-0.5 rounded-full font-bold uppercase bg-white shadow-sm text-slate-500">{s.type}</span></div>
-                                  <div className="flex items-center gap-4 mb-4">
-                                     <button onClick={() => toggleSessionStatus(activeGroupId, s.id)} className={s.completed ? 'text-theme-main' : 'text-slate-300'}>{s.completed ? <CheckCircle2 size={24}/> : <Circle size={24}/>}</button>
-                                     <p className={`text-lg font-serif italic font-bold ${s.completed ? 'line-through opacity-50 text-slate-400' : 'text-theme-dark'}`}>{item?.title || 'Elemento eliminado'}</p>
-                                  </div>
-                                  <textarea value={s.notes} onChange={e => updateSessionNotes(s.id, e.target.value)} placeholder="Reflexiones de la clase..." className="w-full h-24 bg-transparent border-t border-theme-surface pt-3 text-sm italic focus:outline-none resize-none text-slate-600"></textarea>
-                               </div>
-                             );
-                          })}
-                       </div>
-                    </section>
-                 </div>
-               </div>
             )}
 
             {viewMode === 'finance' && (
@@ -916,114 +642,46 @@
                     <button onClick={() => setShowFixedModal(true)} className="p-4 px-8 bg-theme-sec text-white rounded-full font-bold text-xs tracking-widest uppercase shadow-lg hover:scale-105 transition-all flex items-center gap-2"><RefreshCw size={16}/> Pago Fijo / MSI</button>
                   </div>
                 </header>
-
                 <section className="mb-12">
                    <h3 className="text-xs font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2"><PieChart size={16}/> Concentrado de Pagos por Cuenta</h3>
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {accountSummaries.map(summary => (
-                         <div key={summary.id} className="bg-white p-6 rounded-[2.5rem] border border-theme-surface shadow-xl relative overflow-hidden group">
-                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-theme-surface rounded-full opacity-20 group-hover:scale-150 transition-transform"></div>
-                            <div className="flex justify-between items-center mb-6 relative z-10">
-                               <h4 className="font-serif text-2xl font-bold text-theme-dark italic">{summary.name}</h4>
-                               <span className="text-[9px] font-bold text-theme-main bg-theme-surface px-3 py-1 rounded-full uppercase">Corte: {summary.cutDate} | Pago: {summary.payDate}</span>
-                            </div>
-                            <div className="space-y-3 mb-6 relative z-10">
-                               <div className="flex justify-between items-center text-xs"><span className="text-slate-400 font-bold uppercase tracking-wider">Variables</span><span className="font-semibold text-slate-600">{formatMoney(summary.variableTotal)}</span></div>
-                               <div className="flex justify-between items-center text-xs"><span className="text-slate-400 font-bold uppercase tracking-wider">Fijos / MSI</span><span className="font-semibold text-slate-600">{formatMoney(summary.fixedTotal)}</span></div>
-                            </div>
-                            <div className="pt-4 border-t border-slate-50 flex justify-between items-end relative z-10">
-                               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Total a Pagar</span>
-                               <span className="text-3xl font-serif font-bold text-theme-main italic">{formatMoney(summary.total)}</span>
-                            </div>
-                         </div>
+                         <div key={summary.id} className="bg-white p-6 rounded-[2.5rem] border border-theme-surface shadow-xl relative overflow-hidden group"><div className="absolute -right-6 -top-6 w-24 h-24 bg-theme-surface rounded-full opacity-20 group-hover:scale-150 transition-transform"></div><div className="flex justify-between items-center mb-6 relative z-10"><h4 className="font-serif text-2xl font-bold text-theme-dark italic">{summary.name}</h4><span className="text-[9px] font-bold text-theme-main bg-theme-surface px-3 py-1 rounded-full uppercase">Corte: {summary.cutDate} | Pago: {summary.payDate}</span></div><div className="space-y-3 mb-6 relative z-10"><div className="flex justify-between items-center text-xs"><span className="text-slate-400 font-bold uppercase tracking-wider">Variables</span><span className="font-semibold text-slate-600">{formatMoney(summary.variableTotal)}</span></div><div className="flex justify-between items-center text-xs"><span className="text-slate-400 font-bold uppercase tracking-wider">Fijos / MSI</span><span className="font-semibold text-slate-600">{formatMoney(summary.fixedTotal)}</span></div></div><div className="pt-4 border-t border-slate-50 flex justify-between items-end relative z-10"><span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Total a Pagar</span><span className="text-3xl font-serif font-bold text-theme-main italic">{formatMoney(summary.total)}</span></div></div>
                       ))}
-                      {accountSummaries.length === 0 && (
-                         <div className="col-span-full p-8 text-center border-2 border-dashed border-theme-surface rounded-[2.5rem] text-slate-400 text-sm italic">
-                            Aún no has configurado tus tarjetas. Ve a "Config" para añadir Banorte, Efectivo, etc.
-                         </div>
-                      )}
+                      {accountSummaries.length === 0 && (<div className="col-span-full p-8 text-center border-2 border-dashed border-theme-surface rounded-[2.5rem] text-slate-400 text-sm italic">Aún no has configurado tus tarjetas. Ve a "Config" para añadir Banorte, Efectivo, etc.</div>)}
                    </div>
                 </section>
-
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                   <div className="space-y-8">
                     <section className="bg-white p-8 rounded-[4rem] border border-theme-surface shadow-xl">
                       <h3 className="text-xs font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2"><CreditCard size={16}/> MSI y Pagos Fijos</h3>
                       <div className="space-y-4">
-                        {(personalData.finance?.fixedPayments || []).map(f => (
-                          <div key={f.id} className="p-5 bg-slate-50 rounded-[2.5rem] border border-white">
-                            <div className="flex justify-between items-start mb-3">
-                              <div><p className="font-bold text-slate-700 text-sm italic">{f.name}</p><p className="text-[10px] text-slate-400 font-bold uppercase">{(personalData.finance?.accounts || []).find(a=>a.id===f.accountId)?.name}</p></div>
-                              <p className="font-bold text-theme-main">{formatMoney(f.amount)}</p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                               <div className="flex-1 h-1.5 bg-white rounded-full overflow-hidden">
-                                  <div className="h-full bg-theme-sec" style={{width:`${(f.currentMonth/f.totalMonths)*100}%`}}></div>
-                               </div>
-                               <span className="text-[10px] font-bold text-slate-400">{f.currentMonth}/{f.totalMonths}</span>
-                               <button onClick={() => incrementFixedMonth(f.id)} className="p-1 bg-white rounded-lg shadow-sm text-theme-main"><Plus size={12}/></button>
-                            </div>
-                          </div>
-                        ))}
+                        {(personalData.finance?.fixedPayments || []).map(f => (<div key={f.id} className="p-5 bg-slate-50 rounded-[2.5rem] border border-white"><div className="flex justify-between items-start mb-3"><div><p className="font-bold text-slate-700 text-sm italic">{f.name}</p><p className="text-[10px] text-slate-400 font-bold uppercase">{(personalData.finance?.accounts || []).find(a=>a.id===f.accountId)?.name}</p></div><p className="font-bold text-theme-main">{formatMoney(f.amount)}</p></div><div className="flex items-center gap-3"><div className="flex-1 h-1.5 bg-white rounded-full overflow-hidden"><div className="h-full bg-theme-sec" style={{width:`${(f.currentMonth/f.totalMonths)*100}%`}}></div></div><span className="text-[10px] font-bold text-slate-400">{f.currentMonth}/{f.totalMonths}</span><button onClick={() => incrementFixedMonth(f.id)} className="p-1 bg-white rounded-lg shadow-sm text-theme-main"><Plus size={12}/></button></div></div>))}
                         {(personalData.finance?.fixedPayments || []).length === 0 && <p className="text-xs text-slate-300 italic px-2">No hay pagos fijos programados.</p>}
                       </div>
                     </section>
                   </div>
-                  
                   <div className="lg:col-span-2 space-y-8">
                      <section className="bg-white p-10 rounded-[4rem] border border-theme-surface shadow-xl">
-                        <div className="flex justify-between items-start mb-8 border-b border-slate-50 pb-6">
-                          <div>
-                            <h3 className="text-xs font-bold uppercase text-slate-400 tracking-widest flex items-center gap-2 mb-2"><Receipt size={16}/> Registro Mensual (Global)</h3>
-                            <p className="text-sm text-slate-500 italic">Desglose de sumas consolidadas y lista de transacciones.</p>
-                          </div>
-                          <div className="text-right bg-theme-surface/50 p-4 rounded-3xl">
-                             <p className="text-[10px] font-bold text-theme-main uppercase tracking-widest mb-1">Gran Total del Mes</p>
-                             <p className="text-4xl font-serif font-bold text-theme-dark italic">{formatMoney(grandTotal)}</p>
-                          </div>
-                        </div>
-
+                        <div className="flex justify-between items-start mb-8 border-b border-slate-50 pb-6"><div><h3 className="text-xs font-bold uppercase text-slate-400 tracking-widest flex items-center gap-2 mb-2"><Receipt size={16}/> Registro Mensual (Global)</h3><p className="text-sm text-slate-500 italic">Desglose de sumas consolidadas y lista de transacciones.</p></div><div className="text-right bg-theme-surface/50 p-4 rounded-3xl"><p className="text-[10px] font-bold text-theme-main uppercase tracking-widest mb-1">Gran Total del Mes</p><p className="text-4xl font-serif font-bold text-theme-dark italic">{formatMoney(grandTotal)}</p></div></div>
                         <div className="mb-10 bg-slate-50 rounded-3xl p-6 border border-slate-100">
                           <h4 className="text-[10px] font-bold text-theme-sec uppercase tracking-widest mb-4 flex items-center gap-2"><Calculator size={14}/> Resumen de Totales por Cuenta</h4>
                           <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                              <thead>
-                                <tr className="text-[9px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200">
-                                  <th className="pb-3 px-3">Cuenta / Tarjeta</th>
-                                  <th className="pb-3 px-3 text-right">Gastos Diarios (Var)</th>
-                                  <th className="pb-3 px-3 text-right">Pagos Fijos (MSI)</th>
-                                  <th className="pb-3 px-3 text-right text-theme-dark">Total a Pagar</th>
-                                </tr>
-                              </thead>
+                              <thead><tr className="text-[9px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200"><th className="pb-3 px-3">Cuenta / Tarjeta</th><th className="pb-3 px-3 text-right">Gastos Diarios (Var)</th><th className="pb-3 px-3 text-right">Pagos Fijos (MSI)</th><th className="pb-3 px-3 text-right text-theme-dark">Total a Pagar</th></tr></thead>
                               <tbody>
-                                {accountSummaries.map(acc => (
-                                  <tr key={`sum-${acc.id}`} className="border-b border-slate-100 last:border-0">
-                                    <td className="py-3 px-3 text-xs font-bold text-slate-700">{acc.name}</td>
-                                    <td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.variableTotal)}</td>
-                                    <td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.fixedTotal)}</td>
-                                    <td className="py-3 px-3 text-right text-sm font-bold text-theme-main">{formatMoney(acc.total)}</td>
-                                  </tr>
-                                ))}
+                                {accountSummaries.map(acc => (<tr key={`sum-${acc.id}`} className="border-b border-slate-100 last:border-0"><td className="py-3 px-3 text-xs font-bold text-slate-700">{acc.name}</td><td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.variableTotal)}</td><td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.fixedTotal)}</td><td className="py-3 px-3 text-right text-sm font-bold text-theme-main">{formatMoney(acc.total)}</td></tr>))}
                               </tbody>
                             </table>
                           </div>
                         </div>
-
                         <div>
                           <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ListChecks size={14}/> Detalle de Gastos Diarios</h4>
                           <div className="overflow-x-auto">
                             <table className="w-full text-left">
                               <thead><tr className="text-[10px] font-bold text-slate-300 uppercase tracking-widest border-b border-slate-50"><th className="pb-4 px-4">✓</th><th className="pb-4 px-4">Fecha</th><th className="pb-4 px-4">Concepto</th><th className="pb-4 px-4">Tarjeta</th><th className="pb-4 px-4 text-right">Monto</th></tr></thead>
                               <tbody>
-                                 {(personalData.finance?.transactions || []).map(t => (
-                                   <tr key={t.id} className={`group hover:bg-theme-surface/50 transition-all border-b border-slate-50 ${t.verified ? 'opacity-50' : ''}`}>
-                                      <td className="py-4 px-4"><button onClick={() => toggleVerifyTx(t.id)} className={t.verified ? 'text-theme-main' : 'text-slate-200'}>{t.verified ? <CheckCircle2 size={18}/> : <Circle size={18}/>}</button></td>
-                                      <td className="py-4 px-4 text-[10px] font-bold text-slate-400">{t.date}</td>
-                                      <td className="py-4 px-4 text-xs font-semibold text-slate-600 italic">{t.concept}</td>
-                                      <td className="py-4 px-4"><span className="px-3 py-1 bg-white rounded-full text-[9px] font-bold uppercase text-slate-400 shadow-sm">{(personalData.finance?.accounts || []).find(a=>a.id===t.accountId)?.name}</span></td>
-                                      <td className="py-4 px-4 text-right font-bold text-slate-700 text-sm">{formatMoney(t.amount)}</td>
-                                   </tr>
-                                 ))}
+                                 {(personalData.finance?.transactions || []).map(t => (<tr key={t.id} className={`group hover:bg-theme-surface/50 transition-all border-b border-slate-50 ${t.verified ? 'opacity-50' : ''}`}><td className="py-4 px-4"><button onClick={() => toggleVerifyTx(t.id)} className={t.verified ? 'text-theme-main' : 'text-slate-200'}>{t.verified ? <CheckCircle2 size={18}/> : <Circle size={18}/>}</button></td><td className="py-4 px-4 text-[10px] font-bold text-slate-400">{t.date}</td><td className="py-4 px-4 text-xs font-semibold text-slate-600 italic">{t.concept}</td><td className="py-4 px-4"><span className="px-3 py-1 bg-white rounded-full text-[9px] font-bold uppercase text-slate-400 shadow-sm">{(personalData.finance?.accounts || []).find(a=>a.id===t.accountId)?.name}</span></td><td className="py-4 px-4 text-right font-bold text-slate-700 text-sm">{formatMoney(t.amount)}</td></tr>))}
                               </tbody>
                             </table>
                             {(personalData.finance?.transactions || []).length === 0 && <p className="text-xs text-slate-300 italic text-center py-6">No hay gastos variables este mes.</p>}
@@ -1035,7 +693,7 @@
               </div>
             )}
 
-            {/* VISTA SETTINGS ACTUALIZADA */}
+            {/* VISTA SETTINGS */}
             {viewMode === 'settings' && (
               <div className="flex-1 p-20 overflow-y-auto max-w-6xl mx-auto w-full custom-scrollbar">
                 <h2 className="text-6xl font-serif font-bold text-theme-dark mb-16 italic text-center tracking-tighter uppercase">Panel de Configuración</h2>
@@ -1045,22 +703,14 @@
                       <div className="flex-1">
                         <h3 className="font-bold text-[12px] uppercase tracking-[0.5em] text-theme-dark mb-4 flex items-center gap-4 italic"><Palette size={20}/> Diseño y Estilo</h3>
                         <p className="text-xs text-slate-400 mb-6">Elige la vibra de tu agenda y sube tu propia foto para la portada principal.</p>
-                        
                         <div className="flex gap-4">
                            <button onClick={() => changeTheme('jacaranda')} className={`px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${personalData.theme === 'jacaranda' ? 'bg-[#9B5DE5] text-white shadow-lg scale-105' : 'bg-slate-100 text-slate-500 hover:bg-purple-100'}`}>Jacaranda</button>
                            <button onClick={() => changeTheme('prada')} className={`px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${personalData.theme === 'prada' ? 'bg-[#D90429] text-white shadow-lg scale-105' : 'bg-slate-100 text-slate-500 hover:bg-red-100'}`}>Moda Prada</button>
                            <button onClick={() => changeTheme('matcha')} className={`px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${personalData.theme === 'matcha' ? 'bg-[#588157] text-white shadow-lg scale-105' : 'bg-slate-100 text-slate-500 hover:bg-green-100'}`}>Matcha Latte</button>
                         </div>
-
                         <div className="mt-8 border-t border-slate-50 pt-6">
                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Nombre de tu Agenda</p>
-                           <input 
-                             type="text" 
-                             value={personalData.appTitle || ''} 
-                             onChange={e => setPersonalData(p => ({...p, appTitle: e.target.value}))} 
-                             className="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-700 focus:outline-none focus:border-theme-main border border-transparent shadow-inner" 
-                             placeholder="Ej. Mi Templo, Agenda de María..." 
-                           />
+                           <input type="text" value={personalData.appTitle || ''} onChange={e => setPersonalData(p => ({...p, appTitle: e.target.value}))} className="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-700 focus:outline-none focus:border-theme-main border border-transparent shadow-inner" placeholder="Ej. Mi Templo, Agenda de María..." />
                         </div>
                       </div>
                       <div className="shrink-0 flex flex-col items-center gap-3">
@@ -1097,52 +747,30 @@
                       </div>
                    </section>
 
-                   {/* SECCIÓN PARA FRASES Y TRACKERS EN CONFIGURACIÓN */}
+                   {/* FRASES Y HÁBITOS */}
                    <section className="bg-white p-10 rounded-[4rem] border border-theme-surface shadow-xl">
                       <h3 className="font-bold text-[12px] uppercase tracking-[0.5em] text-theme-dark mb-6 flex items-center gap-4 italic"><Quote size={20}/> Frases y Hábitos</h3>
-                      
                       <div className="space-y-6">
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tus Frases Inspiradoras</p>
                           <div className="flex gap-4">
-                            <input 
-                              type="text" 
-                              value={newQuote}
-                              onChange={(e) => setNewQuote(e.target.value)}
-                              placeholder="Nueva frase..." 
-                              className="flex-1 p-4 bg-slate-50 rounded-2xl text-sm focus:outline-none border border-transparent focus:border-theme-main italic shadow-inner" 
-                            />
-                            <button onClick={() => {
-                              if(newQuote.trim()) {
-                                setPersonalData(p => ({...p, quotes: [...p.quotes, newQuote.trim()]}));
-                                setNewQuote('');
-                                showToast("Frase añadida");
-                              }
-                            }} className="p-4 bg-theme-main text-white rounded-2xl font-bold shadow-md hover:scale-105"><Plus size={24}/></button>
+                            <input type="text" value={newQuote} onChange={(e) => setNewQuote(e.target.value)} placeholder="Nueva frase..." className="flex-1 p-4 bg-slate-50 rounded-2xl text-sm focus:outline-none border border-transparent focus:border-theme-main italic shadow-inner" />
+                            <button onClick={() => { if(newQuote.trim()) { setPersonalData(p => ({...p, quotes: [...p.quotes, newQuote.trim()]})); setNewQuote(''); showToast("Frase añadida"); } }} className="p-4 bg-theme-main text-white rounded-2xl font-bold shadow-md hover:scale-105"><Plus size={24}/></button>
                           </div>
                           <div className="mt-3 max-h-32 overflow-y-auto custom-scrollbar pr-2 space-y-2">
                              {personalData.quotes.map((q, idx) => (
                                <div key={idx} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl group">
                                   <p className="text-[11px] italic text-slate-600 truncate">{q}</p>
-                                  {personalData.quotes.length > 1 && (
-                                     <button onClick={() => setPersonalData(p => ({...p, quotes: p.quotes.filter((_, i) => i !== idx)}))} className="text-red-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
-                                        <Trash2 size={12}/>
-                                     </button>
-                                  )}
+                                  {personalData.quotes.length > 1 && (<button onClick={() => setPersonalData(p => ({...p, quotes: p.quotes.filter((_, i) => i !== idx)}))} className="text-red-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12}/></button>)}
                                </div>
                              ))}
                           </div>
                         </div>
-
                         <div className="pt-6 border-t border-slate-50">
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Nuevos Hábitos para el Bujo</p>
                           <div className="flex gap-4">
                             <input type="text" id="newHabit" placeholder="Nuevo hábito (Ej. Meditar)..." className="flex-1 p-4 bg-slate-50 rounded-2xl text-sm focus:outline-none border border-transparent focus:border-theme-main italic shadow-inner" />
-                            <button onClick={() => {
-                              const inp = document.getElementById('newHabit');
-                              addNewMatrixHabit(inp.value);
-                              inp.value = '';
-                            }} className="p-4 bg-theme-sec text-white rounded-2xl font-bold shadow-md hover:scale-105"><Plus size={24}/></button>
+                            <button onClick={() => { const inp = document.getElementById('newHabit'); addNewMatrixHabit(inp.value); inp.value = ''; }} className="p-4 bg-theme-sec text-white rounded-2xl font-bold shadow-md hover:scale-105"><Plus size={24}/></button>
                           </div>
                         </div>
                       </div>
@@ -1152,18 +780,9 @@
                       <div className="w-24 h-24 bg-theme-surface rounded-full flex items-center justify-center text-theme-main mb-8 shadow-inner"><Lock size={48} /></div>
                       <h3 className="text-3xl font-serif font-bold text-slate-800 italic mb-4">Respaldo Maestro</h3>
                       <p className="text-base text-slate-400 mb-10 italic">Toda tu vida docente y financiera en un solo archivo JSON.</p>
-                      
                       <div className="flex flex-col w-full gap-4">
-                        <button onClick={() => { const blob = new Blob([JSON.stringify({groups, personalData}, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `Respaldo_Bitacora_${new Date().toLocaleDateString()}.json`; a.click(); }} className="w-full p-6 bg-theme-main text-white rounded-[2.5rem] font-bold text-[10px] tracking-widest uppercase shadow-xl hover:scale-105 transition-all">
-                           <Download size={20} className="inline mr-2"/> Descargar JSON
-                        </button>
-                        
-                        <label className="w-full flex items-center justify-center gap-3 p-5 bg-white border-2 border-dashed border-theme-main text-theme-main rounded-[2.5rem] font-bold text-[10px] tracking-widest uppercase cursor-pointer hover:bg-theme-surface transition-all">
-                           <Upload size={18} /> Restaurar TODO (Peligro)
-                           <input type="file" accept=".json" onChange={(e) => { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = (re) => { try { const data = JSON.parse(re.target.result); if(data.groups && data.personalData) { setGroups(data.groups); setPersonalData(data.personalData); showToast("¡Agenda restaurada completamente!"); } } catch(err) { alert("Archivo no válido"); } }; reader.readAsText(file); }} className="hidden"/>
-                        </label>
-
-                        {/* BOTÓN SMART SYNC */}
+                        <button onClick={() => { const blob = new Blob([JSON.stringify({groups, personalData}, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `Respaldo_Bitacora_${new Date().toLocaleDateString()}.json`; a.click(); }} className="w-full p-6 bg-theme-main text-white rounded-[2.5rem] font-bold text-[10px] tracking-widest uppercase shadow-xl hover:scale-105 transition-all"><Download size={20} className="inline mr-2"/> Descargar JSON</button>
+                        <label className="w-full flex items-center justify-center gap-3 p-5 bg-white border-2 border-dashed border-theme-main text-theme-main rounded-[2.5rem] font-bold text-[10px] tracking-widest uppercase cursor-pointer hover:bg-theme-surface transition-all"><Upload size={18} /> Restaurar TODO (Peligro)<input type="file" accept=".json" onChange={(e) => { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = (re) => { try { const data = JSON.parse(re.target.result); if(data.groups && data.personalData) { setGroups(data.groups); setPersonalData(data.personalData); showToast("¡Agenda restaurada completamente!"); } } catch(err) { alert("Archivo no válido"); } }; reader.readAsText(file); }} className="hidden"/></label>
                         <div className="relative mt-2">
                            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-theme-accent text-white text-[8px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-md">Smart Sync</div>
                            <label className="w-full flex items-center justify-center gap-3 p-6 bg-gradient-to-r from-theme-dark to-theme-sec text-white rounded-[2.5rem] font-bold text-[10px] tracking-widest uppercase cursor-pointer hover:scale-105 transition-all shadow-lg">
@@ -1198,27 +817,42 @@
                       </div>
                    </section>
                    
+                   {/* GESTIÓN DE GRUPOS */}
                    <section className="flex flex-col gap-8">
                       <div className="bg-white p-10 rounded-[4rem] border border-theme-surface shadow-xl">
                         <h3 className="font-bold text-[12px] uppercase tracking-[0.5em] text-theme-dark mb-6 flex items-center gap-4 italic"><Layout size={20}/> Gestión de Grupos</h3>
+                        
                         <div className="flex flex-col gap-3 mb-8">
                           <input type="text" value={groupForm.name} onChange={e=>setGroupForm({...groupForm, name: e.target.value})} placeholder="Nombre (Ej. Grupo 305)" className="w-full p-4 bg-slate-50 rounded-2xl text-sm focus:outline-none shadow-inner font-bold text-slate-700" />
                           <input type="text" value={groupForm.subj} onChange={e=>setGroupForm({...groupForm, subj: e.target.value})} placeholder="Materia (Ej. Algoritmos)" className="w-full p-4 bg-slate-50 rounded-2xl text-sm focus:outline-none shadow-inner font-bold text-slate-700" />
-                          <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-2xl shadow-inner">
-                            <Clock size={16} className="text-slate-400"/>
-                            <input type="time" value={groupForm.time} onChange={e=>setGroupForm({...groupForm, time: e.target.value})} className="bg-transparent focus:outline-none text-sm font-bold text-slate-600 flex-1" />
+                          
+                          {/* Selector de Días y Horas */}
+                          <div className="bg-slate-50 p-4 rounded-2xl shadow-inner border border-transparent focus-within:border-theme-main transition-colors">
+                             <div className="flex gap-2 justify-between mb-4">
+                                {SHORT_DAYS.map(d => (
+                                   <button key={d.id} onClick={() => toggleGroupFormDay(d.name)} className={`w-8 h-8 rounded-full text-[10px] font-bold transition-all ${groupForm.days?.includes(d.name) ? 'bg-theme-main text-white shadow-md scale-110' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}>
+                                      {d.label}
+                                   </button>
+                                ))}
+                             </div>
+                             <div className="flex items-center gap-3 pt-3 border-t border-slate-200">
+                               <Clock size={16} className="text-slate-400"/>
+                               <input type="time" value={groupForm.time} onChange={e=>setGroupForm({...groupForm, time: e.target.value})} className="bg-transparent focus:outline-none text-sm font-bold text-slate-600 flex-1" />
+                             </div>
                           </div>
-                          <button onClick={() => { 
-                            if(!groupForm.name) return showToast("Falta nombre del grupo");
-                            addNewGroup(groupForm.name, groupForm.subj, groupForm.time); 
-                            setGroupForm({name:'', subj:'', time:'08:00'}); 
-                          }} className="w-full p-4 mt-2 bg-theme-dark text-white rounded-2xl font-bold text-[11px] tracking-widest uppercase shadow-md hover:scale-105 transition-all">Añadir Grupo</button>
+                          
+                          <button onClick={addNewGroup} className="w-full p-4 mt-2 bg-theme-dark text-white rounded-2xl font-bold text-[11px] tracking-widest uppercase shadow-md hover:scale-105 transition-all">Añadir Grupo</button>
                         </div>
+
                         <p className="text-xs text-slate-400 mb-4 border-t border-slate-50 pt-6">Tus grupos actuales:</p>
                         <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
                           {groups.map(g => (
                             <div key={g.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl group border border-transparent hover:border-theme-surface">
-                              <div><p className="text-xs font-bold text-slate-700">{g.name}</p><p className="text-[10px] text-slate-500 italic">{g.subject} • {g.time} hrs</p></div>
+                              <div>
+                                 <p className="text-xs font-bold text-slate-700">{g.name}</p>
+                                 <p className="text-[10px] text-slate-500 italic mt-0.5">{g.subject}</p>
+                                 <p className="text-[9px] font-bold text-theme-main uppercase tracking-widest mt-1">{(g.days || []).map(d=>d.substring(0,2)).join(', ')} • {g.time} hrs</p>
+                              </div>
                               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all"><button onClick={() => setEditingGroup(g)} title="Editar" className="p-2 text-indigo-300 hover:text-indigo-600 bg-white rounded-lg shadow-sm"><Edit3 size={14}/></button><button onClick={() => setGroupToDelete(g)} title="Eliminar" className="p-2 text-red-300 hover:text-red-600 bg-white rounded-lg shadow-sm"><Trash2 size={14}/></button></div>
                             </div>
                           ))}
@@ -1236,7 +870,7 @@
             )}
           </main>
 
-          {/* NUEVO MODAL: GYM TRACKER */}
+          {/* GYM TRACKER MODAL */}
           {showGymModal && (
             <div className="fixed inset-0 z-[90] bg-slate-900/80 backdrop-blur-md flex items-end md:items-center justify-center animate-in slide-in-from-bottom duration-300">
                <div className="bg-[#FCF8FF] w-full max-w-lg h-[90vh] md:h-[85vh] rounded-t-[3rem] md:rounded-[3rem] shadow-2xl flex flex-col overflow-hidden relative">
@@ -1246,9 +880,24 @@
                      <p className="text-[10px] font-bold text-theme-main uppercase tracking-widest mb-1 italic">{selectedDate}</p>
                      <h3 className="text-3xl font-serif font-bold text-theme-dark italic leading-tight">Gym Tracker</h3>
                      
-                     <div className="flex gap-3 mt-6">
-                        <button onClick={() => loadRoutine('Tren Inferior')} className="flex-1 p-3 bg-theme-surface text-theme-main rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-theme-main hover:text-white transition-all shadow-sm">Cargar T. Inferior</button>
-                        <button onClick={() => loadRoutine('Tren Superior')} className="flex-1 p-3 bg-theme-surface text-theme-main rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-theme-main hover:text-white transition-all shadow-sm">Cargar T. Superior</button>
+                     <div className="flex flex-wrap gap-2 mt-6">
+                        <button onClick={() => loadRoutine('Tren Inferior')} className="flex-1 min-w-[100px] p-3 bg-theme-surface text-theme-main rounded-2xl text-[9px] font-bold uppercase tracking-widest hover:bg-theme-main hover:text-white transition-all shadow-sm">T. Inferior</button>
+                        <button onClick={() => loadRoutine('Tren Superior')} className="flex-1 min-w-[100px] p-3 bg-theme-surface text-theme-main rounded-2xl text-[9px] font-bold uppercase tracking-widest hover:bg-theme-main hover:text-white transition-all shadow-sm">T. Superior</button>
+                        <button onClick={() => loadRoutine('Abdomen')} className="flex-1 min-w-[100px] p-3 bg-theme-surface text-theme-main rounded-2xl text-[9px] font-bold uppercase tracking-widest hover:bg-theme-main hover:text-white transition-all shadow-sm">Abdomen</button>
+                     </div>
+
+                     {/* NUEVO: AÑADIR EJERCICIO LIBRE */}
+                     <div className="flex gap-2 mt-3">
+                        <input type="text" value={customExName} onChange={e=>setCustomExName(e.target.value)} placeholder="Añadir ejercicio extra..." className="flex-1 p-3 bg-slate-50 rounded-xl text-xs focus:outline-none focus:border-theme-main border border-transparent italic text-slate-600 shadow-inner" />
+                        <button onClick={() => {
+                           if(customExName.trim()) {
+                              setPersonalData(prev => {
+                                 const currentDay = prev.health.workouts[selectedDate] || { exercises: [] };
+                                 return { ...prev, health: { ...prev.health, workouts: { ...prev.health.workouts, [selectedDate]: { ...currentDay, exercises: [...currentDay.exercises, { id: Date.now(), name: customExName, series: 3, reps: 10, weight: 0, done: false }] } } } };
+                              });
+                              setCustomExName('');
+                           }
+                        }} className="p-3 bg-theme-main text-white rounded-xl hover:scale-105 transition-transform"><Plus size={16}/></button>
                      </div>
                   </div>
 
@@ -1287,7 +936,7 @@
                      {(!currentWorkout.exercises || currentWorkout.exercises.length === 0) && (
                         <div className="text-center flex flex-col items-center justify-center h-40 opacity-50">
                            <Dumbbell size={40} className="mb-4 text-theme-main"/>
-                           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest italic">Selecciona una rutina arriba para comenzar.</p>
+                           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest italic">Carga una rutina o añade ejercicios libres arriba.</p>
                         </div>
                      )}
                   </div>
@@ -1306,7 +955,7 @@
             </div>
           )}
 
-          {/* OTROS MODALES (Edición Grupo, Calendario, Eliminaciones, Factory Reset, etc.) */}
+          {/* MODALES CONFIGURACIÓN Y EDICIÓN GRUPO */}
           {editingGroup && (
             <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in">
                <div className="bg-white w-full max-w-sm p-8 rounded-[3rem] shadow-2xl">
@@ -1314,9 +963,22 @@
                   <div className="space-y-4">
                     <input type="text" value={editingGroup.name} onChange={e => setEditingGroup({...editingGroup, name: e.target.value})} placeholder="Nombre del grupo..." className="w-full p-4 bg-slate-50 rounded-2xl focus:outline-none text-sm italic shadow-inner text-slate-700" />
                     <input type="text" value={editingGroup.subject} onChange={e => setEditingGroup({...editingGroup, subject: e.target.value})} placeholder="Materia..." className="w-full p-4 bg-slate-50 rounded-2xl focus:outline-none text-sm italic shadow-inner text-slate-700" />
-                    <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-2xl shadow-inner">
-                      <Clock size={16} className="text-slate-400"/><input type="time" value={editingGroup.time || '08:00'} onChange={e => setEditingGroup({...editingGroup, time: e.target.value})} className="bg-transparent focus:outline-none text-sm font-bold text-slate-600 flex-1" />
+                    
+                    <div className="bg-slate-50 p-4 rounded-2xl shadow-inner border border-transparent focus-within:border-theme-main transition-colors">
+                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Días de Clase</p>
+                       <div className="flex gap-2 justify-between mb-4">
+                          {SHORT_DAYS.map(d => (
+                             <button key={d.id} onClick={() => toggleEditingGroupDay(d.name)} className={`w-8 h-8 rounded-full text-[10px] font-bold transition-all ${editingGroup.days?.includes(d.name) ? 'bg-theme-main text-white shadow-md scale-110' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}>
+                                {d.label}
+                             </button>
+                          ))}
+                       </div>
+                       <div className="flex items-center gap-3 pt-3 border-t border-slate-200">
+                         <Clock size={16} className="text-slate-400"/>
+                         <input type="time" value={editingGroup.time || '08:00'} onChange={e => setEditingGroup({...editingGroup, time: e.target.value})} className="bg-transparent focus:outline-none text-sm font-bold text-slate-600 flex-1" />
+                       </div>
                     </div>
+
                   </div>
                   <div className="flex gap-4 mt-8">
                     <button onClick={() => setEditingGroup(null)} className="flex-1 p-4 rounded-xl font-bold text-[10px] text-slate-400 hover:bg-slate-50 uppercase tracking-widest">Cancelar</button>
@@ -1368,21 +1030,10 @@
                 <h3 className="text-3xl font-serif font-bold text-theme-dark italic mb-2">Capturar Gasto</h3>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-8 italic">Para el día: {selectedDate}</p>
                 <div className="space-y-4">
-                  <div className="relative">
-                    <span className="absolute left-4 top-4 font-bold text-slate-400">$</span>
-                    <input type="number" value={expForm.amount} onChange={e=>setExpForm({...expForm, amount: e.target.value})} placeholder="0.00" className="w-full p-4 pl-10 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-theme-surface text-lg font-bold text-slate-700" />
-                  </div>
+                  <div className="relative"><span className="absolute left-4 top-4 font-bold text-slate-400">$</span><input type="number" value={expForm.amount} onChange={e=>setExpForm({...expForm, amount: e.target.value})} placeholder="0.00" className="w-full p-4 pl-10 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-theme-surface text-lg font-bold text-slate-700" /></div>
                   <input type="text" value={expForm.concept} onChange={e=>setExpForm({...expForm, concept: e.target.value})} placeholder="Concepto (Ej. Súper...)" className="w-full p-4 bg-slate-50 rounded-2xl border-none text-sm italic text-slate-700" />
-                  <select value={expForm.accountId} onChange={e=>setExpForm({...expForm, accountId: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border-none text-xs font-bold uppercase tracking-widest text-slate-700 focus:outline-none focus:ring-2 focus:ring-theme-surface">
-                    <option value="" disabled>Selecciona la cuenta...</option>
-                    {(personalData.finance?.accounts || []).map(a => <option key={a.id} value={a.id} className="text-slate-700">{a.name}</option>)}
-                  </select>
-                  <button onClick={() => { 
-                    if(expForm.amount && expForm.concept && expForm.accountId) { 
-                      addTransaction(expForm.amount, expForm.concept, expForm.accountId); 
-                      setShowExpenseModal(false); setExpForm({ amount: '', concept: '', accountId: '' });
-                    } else showToast("Llena los campos y selecciona tarjeta");
-                  }} className="w-full p-5 bg-theme-dark text-white rounded-3xl font-bold text-xs tracking-[0.2em] uppercase shadow-xl hover:scale-105 transition-all mt-4">Guardar Gasto</button>
+                  <select value={expForm.accountId} onChange={e=>setExpForm({...expForm, accountId: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border-none text-xs font-bold uppercase tracking-widest text-slate-700 focus:outline-none focus:ring-2 focus:ring-theme-surface"><option value="" disabled>Selecciona la cuenta...</option>{(personalData.finance?.accounts || []).map(a => <option key={a.id} value={a.id} className="text-slate-700">{a.name}</option>)}</select>
+                  <button onClick={() => { if(expForm.amount && expForm.concept && expForm.accountId) { addTransaction(expForm.amount, expForm.concept, expForm.accountId); setShowExpenseModal(false); setExpForm({ amount: '', concept: '', accountId: '' }); } else showToast("Llena los campos y selecciona tarjeta"); }} className="w-full p-5 bg-theme-dark text-white rounded-3xl font-bold text-xs tracking-[0.2em] uppercase shadow-xl hover:scale-105 transition-all mt-4">Guardar Gasto</button>
                 </div>
               </div>
             </div>
@@ -1394,24 +1045,10 @@
                 <h3 className="text-3xl font-serif font-bold text-theme-dark italic mb-6">Nuevo Pago MSI</h3>
                 <div className="space-y-4">
                   <input type="text" value={fixForm.name} onChange={e=>setFixForm({...fixForm, name: e.target.value})} placeholder="Nombre (Ej. Laptop)" className="w-full p-4 bg-slate-50 rounded-2xl text-sm font-semibold text-slate-700" />
-                  <div className="relative">
-                    <span className="absolute left-4 top-4 font-bold text-slate-400">$</span>
-                    <input type="number" value={fixForm.amount} onChange={e=>setFixForm({...fixForm, amount: e.target.value})} placeholder="Monto mensual" className="w-full p-4 pl-10 bg-slate-50 rounded-2xl text-sm font-bold text-slate-700" />
-                  </div>
-                  <div className="flex gap-4">
-                    <input type="number" value={fixForm.current} onChange={e=>setFixForm({...fixForm, current: e.target.value})} placeholder="Mes actual" className="w-1/2 p-4 bg-slate-50 rounded-2xl text-sm text-slate-700 text-center" />
-                    <input type="number" value={fixForm.total} onChange={e=>setFixForm({...fixForm, total: e.target.value})} placeholder="Total meses" className="w-1/2 p-4 bg-slate-50 rounded-2xl text-sm text-slate-700 text-center" />
-                  </div>
-                  <select value={fixForm.accountId} onChange={e=>setFixForm({...fixForm, accountId: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold uppercase tracking-widest text-slate-700 focus:outline-none focus:ring-2 focus:ring-theme-surface">
-                    <option value="" disabled>Selecciona la cuenta...</option>
-                    {(personalData.finance?.accounts || []).map(a => <option key={a.id} value={a.id} className="text-slate-700">{a.name}</option>)}
-                  </select>
-                  <button onClick={() => { 
-                    if(fixForm.name && fixForm.amount && fixForm.total && fixForm.accountId) { 
-                      addFixedPayment(fixForm.name, fixForm.amount, fixForm.total, fixForm.current || 1, fixForm.accountId); 
-                      setShowFixedModal(false); setFixForm({ name: '', amount: '', current: '', total: '', accountId: '' });
-                    } else showToast("Llena los campos y selecciona tarjeta");
-                  }} className="w-full p-5 bg-theme-sec text-white rounded-3xl font-bold text-xs tracking-widest uppercase shadow-xl mt-4">Programar MSI</button>
+                  <div className="relative"><span className="absolute left-4 top-4 font-bold text-slate-400">$</span><input type="number" value={fixForm.amount} onChange={e=>setFixForm({...fixForm, amount: e.target.value})} placeholder="Monto mensual" className="w-full p-4 pl-10 bg-slate-50 rounded-2xl text-sm font-bold text-slate-700" /></div>
+                  <div className="flex gap-4"><input type="number" value={fixForm.current} onChange={e=>setFixForm({...fixForm, current: e.target.value})} placeholder="Mes actual" className="w-1/2 p-4 bg-slate-50 rounded-2xl text-sm text-slate-700 text-center" /><input type="number" value={fixForm.total} onChange={e=>setFixForm({...fixForm, total: e.target.value})} placeholder="Total meses" className="w-1/2 p-4 bg-slate-50 rounded-2xl text-sm text-slate-700 text-center" /></div>
+                  <select value={fixForm.accountId} onChange={e=>setFixForm({...fixForm, accountId: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold uppercase tracking-widest text-slate-700 focus:outline-none focus:ring-2 focus:ring-theme-surface"><option value="" disabled>Selecciona la cuenta...</option>{(personalData.finance?.accounts || []).map(a => <option key={a.id} value={a.id} className="text-slate-700">{a.name}</option>)}</select>
+                  <button onClick={() => { if(fixForm.name && fixForm.amount && fixForm.total && fixForm.accountId) { addFixedPayment(fixForm.name, fixForm.amount, fixForm.total, fixForm.current || 1, fixForm.accountId); setShowFixedModal(false); setFixForm({ name: '', amount: '', current: '', total: '', accountId: '' }); } else showToast("Llena los campos y selecciona tarjeta"); }} className="w-full p-5 bg-theme-sec text-white rounded-3xl font-bold text-xs tracking-widest uppercase shadow-xl mt-4">Programar MSI</button>
                 </div>
               </div>
             </div>
