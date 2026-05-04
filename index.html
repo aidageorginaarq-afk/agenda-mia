@@ -12,7 +12,6 @@
 
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%239B5DE5'/%3E%3Cpath d='M50 20 C60 40 85 45 85 70 C85 95 60 100 50 80 C40 100 15 95 15 70 C15 45 40 40 50 20 Z' fill='white'/%3E%3C/svg%3E">
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%239B5DE5'/%3E%3Cpath d='M50 20 C60 40 85 45 85 70 C85 95 60 100 50 80 C40 100 15 95 15 70 C15 45 40 40 50 20 Z' fill='white'/%3E%3C/svg%3E">
-  <link id="manifest-link" rel="manifest" href="">
 
   <script type="importmap">
     {
@@ -313,7 +312,7 @@
          showToast(`${lines.length} elementos importados`);
       };
 
-      // SMART SYNC HANDLER 
+      // SMART SYNC HANDLER
       const handleSmartSync = (e, type) => {
          const file = e.target.files[0];
          if (!file) return;
@@ -347,7 +346,7 @@
          reader.readAsText(file);
       };
 
-      const handleFactoryReset = () => { localStorage.clear(); setGroups([{ id: 'G1', name: 'Nuevo Grupo', subject: 'Materia...', color: '#BE95C4', schedule:[], topics: [], adas: [], sessions: [], tasks: [] }]); setPersonalData({ appTitle: 'Agenda - Bitácora', theme: 'jacaranda', habits: { exercise: false }, waterLogs: {}, sleepLogs: {}, stepsLogs: {}, sleep: { start: '22:00', end: '06:00' }, screenTime: 4, tasks: [], quotes: ["La arquitectura es música congelada."], activeQuoteIndex: 0, habitMatrix: {}, moodLogs: {}, calendarEvents: {}, finance: { accounts: [], transactions: [], fixedPayments: [] }, health: { meals: {}, workouts: {} } }); setCoverImage(null); setShowFactoryResetModal(false); setActiveGroupId('G1'); setViewMode('welcome'); showToast("¡Reseteo exitoso!"); };
+      const handleFactoryReset = () => { localStorage.clear(); setGroups([{ id: 'G1', name: 'Nuevo Grupo', subject: 'Materia...', color: '#BE95C4', schedule:[], topics: [], adas: [], sessions: [], tasks: [] }]); setPersonalData({ appTitle: 'Agenda - Bitácora', theme: 'jacaranda', habits: { exercise: false }, waterLogs: {}, sleepLogs: {}, stepsLogs: {}, sleep: { start: '22:00', end: '06:00' }, tasks: [], quotes: ["La arquitectura es música congelada."], activeQuoteIndex: 0, habitMatrix: {}, moodLogs: {}, calendarEvents: {}, finance: { accounts: [], transactions: [], fixedPayments: [] }, health: { meals: {}, workouts: {} } }); setCoverImage(null); setShowFactoryResetModal(false); setActiveGroupId('G1'); setViewMode('welcome'); showToast("¡Reseteo exitoso!"); };
       
       // FINANZAS
       const formatMoney = (n) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n);
@@ -362,13 +361,7 @@
       const toggleMatrixHabit = (habitName, date) => setPersonalData(prev => { 
          const currentMatrix = prev.habitMatrix || {};
          const currentHabitObj = currentMatrix[habitName] || {};
-         return { 
-            ...prev, 
-            habitMatrix: { 
-               ...currentMatrix, 
-               [habitName]: { ...currentHabitObj, [date]: !currentHabitObj[date] } 
-            } 
-         }; 
+         return { ...prev, habitMatrix: { ...currentMatrix, [habitName]: { ...currentHabitObj, [date]: !currentHabitObj[date] } } }; 
       });
       const addNewMatrixHabit = (habitName) => { if(habitName) { setPersonalData(prev => ({ ...prev, habitMatrix: { ...(prev.habitMatrix || {}), [habitName]: {} } })); showToast("Hábito añadido"); } };
       const setMood = (date, score) => setPersonalData(prev => ({ ...prev, moodLogs: { ...(prev.moodLogs || {}), [date]: score } }));
@@ -441,7 +434,6 @@
 
           {viewMode !== 'welcome' && <button onClick={() => setIsPrivateMode(!isPrivateMode)} className="fixed bottom-10 right-10 z-50 p-6 rounded-full bg-white shadow-2xl border border-theme-surface text-theme-sec hover:scale-110 active:scale-95 transition-all print:hidden">{isPrivateMode ? <Eye size={28} /> : <EyeOff size={28} />}</button>}
 
-          {/* CONTENEDOR PRINCIPAL - LÓGICA DE VISTAS LIMPIA */}
           <main className="flex-1 flex flex-col overflow-hidden relative">
             {isPrivateMode && viewMode !== 'welcome' && <div className="absolute inset-0 z-40 bg-theme-bg/95 backdrop-blur-2xl flex flex-col items-center justify-center text-theme-main"><Lock size={100} className="mb-8 opacity-10" /><h2 className="text-4xl font-serif font-bold italic tracking-widest uppercase">Modo Privado</h2></div>}
 
@@ -610,30 +602,10 @@
                       <div className="flex gap-2 bg-slate-50 p-1 rounded-full"><button onClick={()=>setChartRange('week')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${chartRange==='week'?'bg-white shadow-sm text-theme-dark':'text-slate-400'}`}>Semana</button><button onClick={()=>setChartRange('month')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${chartRange==='month'?'bg-white shadow-sm text-theme-dark':'text-slate-400'}`}>Mes</button></div>
                    </div>
                    <div className="flex gap-8 overflow-x-auto custom-scrollbar pb-4 relative z-10">
-                      <div className="min-w-[300px] flex-1">
-                         <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Hidratación</p>
-                         <div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">
-                            {chartDays.map((d, i) => { const w = (personalData.waterLogs||{})[d] || 0; return (<div key={`water-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: ${w} vasos`}><div className="w-full max-w-[16px] bg-blue-300 rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (w/5)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}
-                         </div>
-                      </div>
-                      <div className="min-w-[300px] flex-1">
-                         <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Horas de Sueño</p>
-                         <div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">
-                            {chartDays.map((d, i) => { const h = (personalData.sleepLogs||{})[d] || 0; return (<div key={`sleep-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: ${h} horas`}><div className="w-full max-w-[16px] bg-indigo-300 rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (h/12)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}
-                         </div>
-                      </div>
-                      <div className="min-w-[300px] flex-1">
-                         <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Energía Física (Gym)</p>
-                         <div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">
-                            {chartDays.map((d, i) => { const energy = (personalData.health?.workouts || {})[d]?.energy || 0; return (<div key={`energy-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: Nivel ${energy}`}><div className="w-full max-w-[16px] bg-[#FF9B85] rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (energy/5)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}
-                         </div>
-                      </div>
-                      <div className="min-w-[300px] flex-1">
-                         <p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Pasos</p>
-                         <div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">
-                            {chartDays.map((d, i) => { const steps = (personalData.stepsLogs||{})[d] || 0; return (<div key={`steps-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: ${steps} pasos`}><div className="w-full max-w-[16px] bg-emerald-300 rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (steps/10000)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}
-                         </div>
-                      </div>
+                      <div className="min-w-[300px] flex-1"><p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Hidratación</p><div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">{chartDays.map((d, i) => { const w = (personalData.waterLogs||{})[d] || 0; return (<div key={`water-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: ${w} vasos`}><div className="w-full max-w-[16px] bg-blue-300 rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (w/5)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}</div></div>
+                      <div className="min-w-[300px] flex-1"><p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Horas de Sueño</p><div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">{chartDays.map((d, i) => { const h = (personalData.sleepLogs||{})[d] || 0; return (<div key={`sleep-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: ${h} horas`}><div className="w-full max-w-[16px] bg-indigo-300 rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (h/12)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}</div></div>
+                      <div className="min-w-[300px] flex-1"><p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Energía Física (Gym)</p><div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">{chartDays.map((d, i) => { const energy = (personalData.health?.workouts || {})[d]?.energy || 0; return (<div key={`energy-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: Nivel ${energy}`}><div className="w-full max-w-[16px] bg-[#FF9B85] rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (energy/5)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}</div></div>
+                      <div className="min-w-[300px] flex-1"><p className="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center tracking-widest">Pasos</p><div className="flex justify-between items-end h-28 border-b-2 border-slate-50 pb-2">{chartDays.map((d, i) => { const steps = (personalData.stepsLogs||{})[d] || 0; return (<div key={`steps-${d}`} className="flex flex-col items-center gap-2 w-full"><div className="w-full flex justify-center h-full items-end" title={`${d}: ${steps} pasos`}><div className="w-full max-w-[16px] bg-emerald-300 rounded-t-sm transition-all shadow-sm opacity-80 hover:opacity-100" style={{height: `${Math.max(5, (steps/10000)*100)}%`}}></div></div>{chartRange==='week' && <span className="text-[8px] text-slate-400 font-bold">{d.slice(-2)}</span>}</div>) })}</div></div>
                    </div>
                 </section>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1009,7 +981,7 @@
             </div>
           )}
 
-          {/* MODALES CONFIGURACIÓN Y EDICIÓN GRUPO */}
+          {/* MODALES DE EDICIÓN Y GESTIÓN */}
           {editingGroup && (
             <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in">
                <div className="bg-white w-full max-w-sm p-8 rounded-[3rem] shadow-2xl">
