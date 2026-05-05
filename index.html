@@ -108,48 +108,29 @@
           <div className={`w-full ${height} flex flex-col`}>
              <div className="flex-1 relative w-full pt-3 pb-3 px-2">
                 <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
-                   {/* Línea Principal */}
                    <polyline 
-                     points={points} 
-                     fill="none" 
-                     stroke={color} 
-                     strokeWidth="2.5" 
-                     vectorEffect="nonScalingStroke" 
-                     strokeLinecap="round" 
-                     strokeLinejoin="round" 
+                     points={points} fill="none" stroke={color} strokeWidth="2.5" 
+                     vectorEffect="nonScalingStroke" strokeLinecap="round" strokeLinejoin="round" 
                      className="drop-shadow-sm"
                    />
-                   {/* Puntos (Nodos) */}
                    {data.map((val, idx) => {
                       const x = (idx / (Math.max(data.length - 1, 1))) * 100;
                       const y = 100 - ((val / max) * 100);
                       return (
-                         <circle 
-                           key={idx} 
-                           cx={x} cy={y} r="4" 
-                           fill="white" 
-                           stroke={color} 
-                           strokeWidth="2" 
-                           vectorEffect="nonScalingStroke" 
-                           className="transition-all hover:r-[6px] cursor-pointer shadow-sm"
-                         >
+                         <circle key={idx} cx={x} cy={y} r="4" fill="white" stroke={color} strokeWidth="2" 
+                           vectorEffect="nonScalingStroke" className="transition-all hover:r-[6px] cursor-pointer shadow-sm">
                            <title>{labels[idx]}: {val} {unit}</title>
                          </circle>
                       )
                    })}
                 </svg>
              </div>
-             {/* Eje X (Etiquetas) */}
              <div className="flex justify-between w-full mt-2 px-1">
                 {labels.map((l, idx) => {
                    const dObj = new Date(l + 'T12:00:00');
                    const dayStr = dObj.getDate().toString().padStart(2, '0');
                    const showLabel = labels.length <= 7 || idx % Math.ceil(labels.length/7) === 0 || idx === labels.length - 1;
-                   return (
-                     <span key={idx} className={`text-[7px] text-slate-400 font-bold ${showLabel ? 'opacity-100' : 'opacity-0'}`}>
-                        {dayStr}
-                     </span>
-                   )
+                   return <span key={idx} className={`text-[7px] text-slate-400 font-bold ${showLabel ? 'opacity-100' : 'opacity-0'}`}>{dayStr}</span>
                 })}
              </div>
           </div>
@@ -160,7 +141,6 @@
     const MultiLineChart = ({ datasets, labels, height = "h-48" }) => {
        return (
           <div className={`w-full ${height} flex flex-col`}>
-             {/* Leyenda de colores */}
              <div className="flex flex-wrap gap-3 justify-center mb-4">
                 {datasets.map((ds, i) => (
                    <div key={i} className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full shadow-sm border border-slate-100">
@@ -169,11 +149,8 @@
                    </div>
                 ))}
              </div>
-             
-             {/* Gráfica con cuadrícula de libreta */}
              <div className="flex-1 relative w-full pt-6 pb-6 px-4 bg-[#FCF8FF] rounded-[2rem] border border-purple-50 shadow-inner overflow-hidden">
                 <div className="absolute inset-0 pointer-events-none opacity-30" style={{ backgroundImage: 'linear-gradient(#cbd5e1 1px, transparent 1px), linear-gradient(90deg, #cbd5e1 1px, transparent 1px)', backgroundSize: '20px 20px', backgroundPosition: 'center center' }}></div>
-                
                 <svg className="w-full h-full overflow-visible relative z-10" preserveAspectRatio="none" viewBox="0 0 100 100">
                    {datasets.map((ds, dsIdx) => {
                       const offset = (dsIdx * 3) - (datasets.length * 1.5); 
@@ -204,7 +181,6 @@
                    })}
                 </svg>
              </div>
-             {/* Fechas eje X */}
              <div className="flex justify-between w-full mt-3 px-2">
                 {labels.map((l, idx) => {
                    const dObj = new Date(l + 'T12:00:00');
@@ -348,7 +324,6 @@
          return DAYS_OF_WEEK[d.getDay()];
       }, [selectedDate]);
 
-      // Calculo de semana actual (Lunes a Domingo) para Bujo (Habit Matrix visual)
       const weekDays = useMemo(() => {
         const dt = new Date(selectedDate + 'T12:00:00');
         const day = dt.getDay();
@@ -436,7 +411,6 @@
       const toggleSessionStatus = (groupId, sessionId) => setGroups(prev => prev.map(g => g.id === groupId ? { ...g, sessions: (g.sessions||[]).map(s => s.id === sessionId ? { ...s, completed: !s.completed } : s) } : g));
       const toggleGroupTask = (taskId, groupId = activeGroupId) => setGroups(prev => prev.map(g => g.id === groupId ? { ...g, tasks: (g.tasks || []).map(t => t.id === taskId ? { ...t, done: !t.done } : t) } : g));
       
-      // IMPORTAR TEMAS Y ADAS
       const handleImport = () => {
          if(!importText.trim()) return;
          const lines = importText.split('\n').filter(l => l.trim() !== '');
@@ -447,7 +421,7 @@
          showToast(`${lines.length} elementos importados`);
       };
 
-      // SMART SYNC HANDLER (AHORA CON TODOS LOS MÓDULOS)
+      // --- NUEVO: SMART SYNC HANDLER Y EXPORT ---
       const handleSmartSync = (e, type) => {
          const file = e.target.files[0];
          if (!file) return;
@@ -499,10 +473,43 @@
             } catch (err) { alert("Archivo no válido."); }
          };
          reader.readAsText(file);
-         e.target.value = ''; // Permite volver a seleccionar el mismo archivo
+         e.target.value = ''; 
       };
 
-      // EXPORTAR BUJO CSV
+      const handleSmartExport = (type) => {
+         let exportData = {};
+         let fileName = `Bitacora_${type}_${new Date().toLocaleDateString()}.json`;
+
+         if (type === 'all') {
+            exportData = { groups, personalData };
+            fileName = `Respaldo_Completo_${new Date().toLocaleDateString()}.json`;
+         } else if (type === 'classes') {
+            exportData = { groups };
+         } else if (type === 'gym') {
+            exportData = { 
+               personalData: { 
+                  health: personalData.health, waterLogs: personalData.waterLogs, 
+                  sleepLogs: personalData.sleepLogs, stepsLogs: personalData.stepsLogs 
+               } 
+            };
+         } else if (type === 'bujo') {
+            exportData = { 
+               personalData: { 
+                  tasks: personalData.tasks, habitMatrix: personalData.habitMatrix, 
+                  moodLogs: personalData.moodLogs, savingsLogs: personalData.savingsLogs, quotes: personalData.quotes 
+               } 
+            };
+         } else if (type === 'finance') {
+            exportData = { personalData: { finance: personalData.finance } };
+         }
+
+         const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+         const url = URL.createObjectURL(blob);
+         const a = document.createElement('a'); 
+         a.href = url; a.download = fileName; a.click();
+         showToast(`¡Descarga lista!`);
+      };
+
       const handleExportBujo = () => {
          const dates = new Set([...Object.keys(personalData.stepsLogs || {}), ...Object.keys(personalData.sleepLogs || {}), ...Object.keys(personalData.moodLogs || {}), ...Object.keys(personalData.savingsLogs || {}), ...Object.keys(personalData.waterLogs || {})]);
          Object.values(personalData.habitMatrix || {}).forEach(h => Object.keys(h).forEach(d => dates.add(d)));
@@ -623,7 +630,6 @@
 
           {viewMode !== 'welcome' && <button onClick={() => setIsPrivateMode(!isPrivateMode)} className="fixed bottom-10 right-10 z-50 p-6 rounded-full bg-white shadow-2xl border border-theme-surface text-theme-sec hover:scale-110 active:scale-95 transition-all print:hidden">{isPrivateMode ? <Eye size={28} /> : <EyeOff size={28} />}</button>}
 
-          {/* CONTENEDOR PRINCIPAL */}
           <main className="flex-1 flex flex-col overflow-hidden relative">
             {isPrivateMode && viewMode !== 'welcome' && <div className="absolute inset-0 z-40 bg-theme-bg/95 backdrop-blur-2xl flex flex-col items-center justify-center text-theme-main"><Lock size={100} className="mb-8 opacity-10" /><h2 className="text-4xl font-serif font-bold italic tracking-widest uppercase">Modo Privado</h2></div>}
 
@@ -779,7 +785,6 @@
               </div>
             )}
 
-            {/* LA NUEVA VISTA BUJO */}
             {viewMode === 'bujo' && (
               <div className="flex-1 p-10 overflow-y-auto max-w-7xl mx-auto w-full custom-scrollbar">
                 <header className="mb-10 flex justify-between items-end border-b border-theme-surface pb-8">
@@ -796,57 +801,30 @@
                   </div>
                 </header>
 
-                {/* TRACKERS GRÁFICOS (LÍNEAS CARDIO) */}
                 <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg mb-8 relative overflow-hidden">
                    <h3 className="text-xs font-bold uppercase text-theme-dark mb-6 tracking-[0.3em] flex items-center gap-3 italic"><TrendingUp size={18} /> Resumen {chartRange === 'week' ? 'Semanal' : 'Mensual'}</h3>
                    <div className="flex gap-6 overflow-x-auto custom-scrollbar pb-4">
-                      {/* Pasos */}
                       <div className="min-w-[250px] flex-1 bg-slate-50/50 p-4 rounded-[2rem] border border-slate-100">
                          <p className="text-[10px] font-bold text-emerald-500 uppercase mb-2 text-center tracking-widest flex justify-center items-center gap-2"><Footprints size={14}/> Pasos</p>
-                         <LineChart 
-                            data={chartDays.map(d => (personalData.stepsLogs||{})[d] || 0)} 
-                            labels={chartDays} 
-                            color="#34d399" 
-                            maxVal={Math.max(10000, ...chartDays.map(d => (personalData.stepsLogs||{})[d] || 0))} 
-                         />
+                         <LineChart data={chartDays.map(d => (personalData.stepsLogs||{})[d] || 0)} labels={chartDays} color="#34d399" maxVal={Math.max(10000, ...chartDays.map(d => (personalData.stepsLogs||{})[d] || 0))} />
                       </div>
-                      {/* Sueño */}
                       <div className="min-w-[250px] flex-1 bg-slate-50/50 p-4 rounded-[2rem] border border-slate-100">
                          <p className="text-[10px] font-bold text-indigo-400 uppercase mb-2 text-center tracking-widest flex justify-center items-center gap-2"><Moon size={14}/> Sueño (Hrs)</p>
-                         <LineChart 
-                            data={chartDays.map(d => (personalData.sleepLogs||{})[d] || 0)} 
-                            labels={chartDays} 
-                            color="#818cf8" 
-                            maxVal={12} 
-                         />
+                         <LineChart data={chartDays.map(d => (personalData.sleepLogs||{})[d] || 0)} labels={chartDays} color="#818cf8" maxVal={12} />
                       </div>
-                      {/* Humor */}
                       <div className="min-w-[250px] flex-1 bg-slate-50/50 p-4 rounded-[2rem] border border-slate-100">
                          <p className="text-[10px] font-bold text-amber-500 uppercase mb-2 text-center tracking-widest flex justify-center items-center gap-2"><Smile size={14}/> Humor</p>
-                         <LineChart 
-                            data={chartDays.map(d => (personalData.moodLogs||{})[d] || 0)} 
-                            labels={chartDays} 
-                            color="#fbbf24" 
-                            maxVal={5} 
-                         />
+                         <LineChart data={chartDays.map(d => (personalData.moodLogs||{})[d] || 0)} labels={chartDays} color="#fbbf24" maxVal={5} />
                       </div>
-                      {/* Ahorro */}
                       <div className="min-w-[250px] flex-1 bg-slate-50/50 p-4 rounded-[2rem] border border-slate-100">
                          <p className="text-[10px] font-bold text-rose-500 uppercase mb-2 text-center tracking-widest flex justify-center items-center gap-2"><PiggyBank size={14}/> Ahorro ($)</p>
-                         <LineChart 
-                            data={chartDays.map(d => (personalData.savingsLogs||{})[d] || 0)} 
-                            labels={chartDays} 
-                            color="#fb7185" 
-                            maxVal={Math.max(100, ...chartDays.map(d => (personalData.savingsLogs||{})[d] || 0))} 
-                         />
+                         <LineChart data={chartDays.map(d => (personalData.savingsLogs||{})[d] || 0)} labels={chartDays} color="#fb7185" maxVal={Math.max(100, ...chartDays.map(d => (personalData.savingsLogs||{})[d] || 0))} />
                       </div>
                    </div>
                 </section>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* COLUMNA IZQUIERDA: INPUTS DE HOY */}
                   <div className="space-y-8">
-                    {/* HUMOR */}
                     <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg text-center">
                        <h3 className="text-[10px] font-bold uppercase text-slate-400 mb-6 tracking-[0.4em] italic">Humor de Hoy</h3>
                        <div className="flex justify-between bg-slate-50 rounded-[2rem] p-2 relative shadow-inner">
@@ -865,7 +843,6 @@
                        </div>
                     </section>
 
-                    {/* SUEÑO Y AGUA */}
                     <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg">
                        <h3 className="text-[10px] font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2 italic"><Moon size={14}/> Descanso & Agua</h3>
                        <div className="space-y-6">
@@ -884,7 +861,6 @@
                        </div>
                     </section>
 
-                    {/* PASOS Y ALCANCÍA */}
                     <div className="grid grid-cols-2 gap-4">
                        <section className="bg-emerald-50 p-6 rounded-[2.5rem] border border-emerald-100 shadow-sm text-center">
                           <Footprints size={24} className="mx-auto mb-2 text-emerald-500" />
@@ -901,7 +877,6 @@
                     </div>
                   </div>
 
-                  {/* COLUMNA DERECHA: MATRIZ DE HÁBITOS Y GRÁFICAS MULTILÍNEA */}
                   <div className="lg:col-span-2">
                     <section className="bg-white p-10 rounded-[4rem] border border-theme-surface shadow-xl h-full flex flex-col">
                        <div className="flex justify-between items-center mb-8 border-b border-slate-50 pb-6">
@@ -960,7 +935,6 @@
                           {Object.keys(personalData.habitMatrix || {}).length === 0 && <div className="text-center py-20 opacity-50"><ListChecks size={40} className="mx-auto mb-4 text-theme-main"/><p className="text-xs font-bold text-slate-500 uppercase tracking-widest italic">Añade tu primer hábito arriba</p></div>}
                        </div>
 
-                       {/* GRÁFICA MULTILÍNEA BUJO STYLE */}
                        <div className="pt-8 border-t border-slate-50 mt-auto">
                           <p className="text-[10px] font-bold text-theme-main uppercase mb-6 text-left tracking-widest flex items-center gap-2"><TrendingUp size={14}/> Rastreador Global de Hábitos (Bujo)</p>
                           <div className="w-full">
@@ -1226,7 +1200,7 @@
                       <div className="w-full max-w-2xl bg-slate-50 p-8 rounded-[3rem] shadow-inner mb-6">
                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">1. Principal</p>
                          <div className="flex flex-col md:flex-row gap-4">
-                           <button onClick={() => { const blob = new Blob([JSON.stringify({groups, personalData}, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `Respaldo_Bitacora_${new Date().toLocaleDateString()}.json`; a.click(); }} className="flex-1 flex justify-center items-center gap-2 p-6 bg-theme-main text-white rounded-[2rem] font-bold text-[10px] tracking-widest uppercase shadow-xl hover:scale-105 transition-all"><Download size={18}/> Descargar JSON</button>
+                           <button onClick={() => handleSmartExport('all')} className="flex-1 flex justify-center items-center gap-2 p-6 bg-theme-main text-white rounded-[2rem] font-bold text-[10px] tracking-widest uppercase shadow-xl hover:scale-105 transition-all"><Download size={18}/> Descargar Respaldo Completo</button>
                            
                            <label className="flex-1 flex justify-center items-center gap-2 p-6 bg-white border-2 border-dashed border-red-300 text-red-400 rounded-[2rem] font-bold text-[10px] tracking-widest uppercase cursor-pointer hover:bg-red-50 transition-all">
                               <Upload size={18} /> Restaurar TODO
@@ -1235,30 +1209,51 @@
                          </div>
                       </div>
 
-                      <div className="w-full max-w-2xl bg-[#FCF8FF] p-8 rounded-[3rem] border border-theme-surface shadow-sm">
-                         <p className="text-[10px] font-bold text-theme-main uppercase tracking-widest mb-4">2. Sincronización Inteligente (Por Módulos)</p>
+                      <div className="w-full max-w-3xl bg-[#FCF8FF] p-8 rounded-[3rem] border border-theme-surface shadow-sm">
+                         <p className="text-[10px] font-bold text-theme-main uppercase tracking-widest mb-6">2. Sincronización Inteligente (Por Módulos)</p>
                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <label className="flex-1 flex justify-center items-center gap-2 p-4 bg-indigo-500 text-white rounded-[2rem] font-bold text-[10px] tracking-widest uppercase cursor-pointer hover:bg-indigo-600 transition-all shadow-md">
-                               <BookOpen size={16} /> Importar Clases
-                               <input type="file" accept=".json" onChange={(e) => handleSmartSync(e, 'classes')} className="hidden" />
-                            </label>
-
-                            <label className="flex-1 flex justify-center items-center gap-2 p-4 bg-[#FF9B85] text-white rounded-[2rem] font-bold text-[10px] tracking-widest uppercase cursor-pointer hover:opacity-90 transition-all shadow-md">
-                               <Dumbbell size={16} /> Importar Salud
-                               <input type="file" accept=".json" onChange={(e) => handleSmartSync(e, 'gym')} className="hidden" />
-                            </label>
-                            
-                            <label className="flex-1 flex justify-center items-center gap-2 p-4 bg-emerald-500 text-white rounded-[2rem] font-bold text-[10px] tracking-widest uppercase cursor-pointer hover:bg-emerald-600 transition-all shadow-md">
-                               <NotebookPen size={16} /> Importar Bujo
-                               <input type="file" accept=".json" onChange={(e) => handleSmartSync(e, 'bujo')} className="hidden" />
-                            </label>
-                            
-                            <label className="flex-1 flex justify-center items-center gap-2 p-4 bg-slate-800 text-white rounded-[2rem] font-bold text-[10px] tracking-widest uppercase cursor-pointer hover:bg-black transition-all shadow-md">
-                               <Wallet size={16} /> Importar Cartera
-                               <input type="file" accept=".json" onChange={(e) => handleSmartSync(e, 'finance')} className="hidden" />
-                            </label>
+                            {/* Clases */}
+                            <div className="flex flex-col gap-3 p-4 bg-white rounded-[2rem] shadow-sm border border-indigo-50">
+                               <p className="text-[11px] font-bold text-indigo-500 uppercase tracking-widest text-center flex items-center justify-center gap-2"><BookCopy size={16}/> Clases</p>
+                               <div className="flex gap-2">
+                                  <button onClick={() => handleSmartExport('classes')} className="flex-1 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-[9px] uppercase tracking-widest hover:bg-indigo-100 transition-colors">Exportar</button>
+                                  <label className="flex-1 py-2.5 bg-indigo-500 text-white rounded-xl font-bold text-[9px] uppercase tracking-widest text-center cursor-pointer hover:bg-indigo-600 transition-colors">
+                                     Importar <input type="file" accept=".json" onChange={(e) => handleSmartSync(e, 'classes')} className="hidden" />
+                                  </label>
+                               </div>
+                            </div>
+                            {/* Salud */}
+                            <div className="flex flex-col gap-3 p-4 bg-white rounded-[2rem] shadow-sm border border-orange-50">
+                               <p className="text-[11px] font-bold text-[#FF9B85] uppercase tracking-widest text-center flex items-center justify-center gap-2"><HeartPulse size={16}/> Salud & Gym</p>
+                               <div className="flex gap-2">
+                                  <button onClick={() => handleSmartExport('gym')} className="flex-1 py-2.5 bg-orange-50 text-[#FF9B85] rounded-xl font-bold text-[9px] uppercase tracking-widest hover:bg-orange-100 transition-colors">Exportar</button>
+                                  <label className="flex-1 py-2.5 bg-[#FF9B85] text-white rounded-xl font-bold text-[9px] uppercase tracking-widest text-center cursor-pointer hover:opacity-90 transition-opacity">
+                                     Importar <input type="file" accept=".json" onChange={(e) => handleSmartSync(e, 'gym')} className="hidden" />
+                                  </label>
+                               </div>
+                            </div>
+                            {/* Bujo */}
+                            <div className="flex flex-col gap-3 p-4 bg-white rounded-[2rem] shadow-sm border border-emerald-50">
+                               <p className="text-[11px] font-bold text-emerald-500 uppercase tracking-widest text-center flex items-center justify-center gap-2"><NotebookPen size={16}/> Bujo</p>
+                               <div className="flex gap-2">
+                                  <button onClick={() => handleSmartExport('bujo')} className="flex-1 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl font-bold text-[9px] uppercase tracking-widest hover:bg-emerald-100 transition-colors">Exportar</button>
+                                  <label className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl font-bold text-[9px] uppercase tracking-widest text-center cursor-pointer hover:bg-emerald-600 transition-colors">
+                                     Importar <input type="file" accept=".json" onChange={(e) => handleSmartSync(e, 'bujo')} className="hidden" />
+                                  </label>
+                               </div>
+                            </div>
+                            {/* Cartera */}
+                            <div className="flex flex-col gap-3 p-4 bg-white rounded-[2rem] shadow-sm border border-slate-200">
+                               <p className="text-[11px] font-bold text-slate-700 uppercase tracking-widest text-center flex items-center justify-center gap-2"><Wallet size={16}/> Cartera</p>
+                               <div className="flex gap-2">
+                                  <button onClick={() => handleSmartExport('finance')} className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-[9px] uppercase tracking-widest hover:bg-slate-200 transition-colors">Exportar</button>
+                                  <label className="flex-1 py-2.5 bg-slate-800 text-white rounded-xl font-bold text-[9px] uppercase tracking-widest text-center cursor-pointer hover:bg-slate-900 transition-colors">
+                                     Importar <input type="file" accept=".json" onChange={(e) => handleSmartSync(e, 'finance')} className="hidden" />
+                                  </label>
+                               </div>
+                            </div>
                          </div>
-                         <p className="text-[9px] text-slate-400 mt-5 italic">Sube tu archivo de respaldo general. Elige qué módulo quieres extraer y sobreescribir. Los demás datos de tu agenda no se verán afectados.</p>
+                         <p className="text-[9px] text-slate-400 mt-5 italic text-center">Exporta o Importa únicamente el módulo que necesitas sin afectar el resto de tu agenda.</p>
                       </div>
                    </section>
 
