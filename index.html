@@ -94,7 +94,7 @@
       { id: 'AB4', name: 'Giro Ruso (Russian Twist)', target: 'Abdomen', defaultSeries: 3, defaultReps: 20 }
     ];
 
-    // --- COMPONENTE DE GRÁFICA DE LÍNEA (TIPO CARDIO) ---
+    // --- COMPONENTE DE GRÁFICA DE LÍNEA (TIPO CARDIO - INDIVIDUAL) ---
     const LineChart = ({ data, labels, color, maxVal, height = "h-24", unit = "" }) => {
        const max = maxVal || Math.max(...data, 1);
        
@@ -197,7 +197,7 @@
                                   <circle key={idx} cx={x} cy={y} r="5" fill="white" stroke={ds.color} strokeWidth="2.5" vectorEffect="nonScalingStroke" className="transition-all hover:r-[7px] cursor-pointer shadow-sm">
                                     <title>{ds.label}: {val ? 'Completado' : 'Pendiente'}</title>
                                   </circle>
-                                )
+                               )
                             })}
                          </g>
                       );
@@ -447,7 +447,7 @@
          showToast(`${lines.length} elementos importados`);
       };
 
-      // SMART SYNC HANDLER
+      // SMART SYNC HANDLER (AHORA CON TODOS LOS MÓDULOS)
       const handleSmartSync = (e, type) => {
          const file = e.target.files[0];
          if (!file) return;
@@ -456,29 +456,50 @@
             try {
                const data = JSON.parse(re.target.result);
                if (type === 'gym') {
-                  if (data.personalData && data.personalData.health) {
+                  if (data.personalData) {
                      setPersonalData(prev => ({
                         ...prev,
                         health: {
                            ...prev.health,
-                           workouts: { ...(prev.health?.workouts || {}), ...(data.personalData.health.workouts || {}) },
-                           meals: { ...(prev.health?.meals || {}), ...(data.personalData.health.meals || {}) }
+                           workouts: { ...(prev.health?.workouts || {}), ...(data.personalData.health?.workouts || {}) },
+                           meals: { ...(prev.health?.meals || {}), ...(data.personalData.health?.meals || {}) }
                         },
                         waterLogs: { ...(prev.waterLogs || {}), ...(data.personalData.waterLogs || {}) },
                         sleepLogs: { ...(prev.sleepLogs || {}), ...(data.personalData.sleepLogs || {}) },
                         stepsLogs: { ...(prev.stepsLogs || {}), ...(data.personalData.stepsLogs || {}) }
                      }));
-                     showToast("💪 ¡Datos de Gym sincronizados!");
-                  } else showToast("El archivo no tiene datos de Gym.");
+                     showToast("💪 ¡Datos de Salud sincronizados!");
+                  } else showToast("El archivo no tiene datos de Salud.");
                } else if (type === 'classes') {
                   if (data.groups) {
                      setGroups(data.groups);
                      showToast("📚 ¡Grupos y Clases sincronizadas!");
                   } else showToast("El archivo no tiene datos de Clases.");
+               } else if (type === 'bujo') {
+                  if (data.personalData) {
+                     setPersonalData(prev => ({
+                        ...prev,
+                        tasks: data.personalData.tasks || prev.tasks,
+                        habitMatrix: data.personalData.habitMatrix || prev.habitMatrix,
+                        moodLogs: { ...(prev.moodLogs || {}), ...(data.personalData.moodLogs || {}) },
+                        savingsLogs: { ...(prev.savingsLogs || {}), ...(data.personalData.savingsLogs || {}) },
+                        quotes: data.personalData.quotes || prev.quotes
+                     }));
+                     showToast("📔 ¡Diario Bujo sincronizado!");
+                  } else showToast("El archivo no tiene datos de Bujo.");
+               } else if (type === 'finance') {
+                  if (data.personalData && data.personalData.finance) {
+                     setPersonalData(prev => ({
+                        ...prev,
+                        finance: data.personalData.finance
+                     }));
+                     showToast("💳 ¡Cartera sincronizada!");
+                  } else showToast("El archivo no tiene datos de Cartera.");
                }
             } catch (err) { alert("Archivo no válido."); }
          };
          reader.readAsText(file);
+         e.target.value = ''; // Permite volver a seleccionar el mismo archivo
       };
 
       // EXPORTAR BUJO CSV
@@ -602,6 +623,7 @@
 
           {viewMode !== 'welcome' && <button onClick={() => setIsPrivateMode(!isPrivateMode)} className="fixed bottom-10 right-10 z-50 p-6 rounded-full bg-white shadow-2xl border border-theme-surface text-theme-sec hover:scale-110 active:scale-95 transition-all print:hidden">{isPrivateMode ? <Eye size={28} /> : <EyeOff size={28} />}</button>}
 
+          {/* CONTENEDOR PRINCIPAL */}
           <main className="flex-1 flex flex-col overflow-hidden relative">
             {isPrivateMode && viewMode !== 'welcome' && <div className="absolute inset-0 z-40 bg-theme-bg/95 backdrop-blur-2xl flex flex-col items-center justify-center text-theme-main"><Lock size={100} className="mb-8 opacity-10" /><h2 className="text-4xl font-serif font-bold italic tracking-widest uppercase">Modo Privado</h2></div>}
 
@@ -879,7 +901,7 @@
                     </div>
                   </div>
 
-                  {/* COLUMNA DERECHA: MATRIZ DE HÁBITOS Y GRÁFICAS */}
+                  {/* COLUMNA DERECHA: MATRIZ DE HÁBITOS Y GRÁFICAS MULTILÍNEA */}
                   <div className="lg:col-span-2">
                     <section className="bg-white p-10 rounded-[4rem] border border-theme-surface shadow-xl h-full flex flex-col">
                        <div className="flex justify-between items-center mb-8 border-b border-slate-50 pb-6">
@@ -936,6 +958,29 @@
                              </tbody>
                           </table>
                           {Object.keys(personalData.habitMatrix || {}).length === 0 && <div className="text-center py-20 opacity-50"><ListChecks size={40} className="mx-auto mb-4 text-theme-main"/><p className="text-xs font-bold text-slate-500 uppercase tracking-widest italic">Añade tu primer hábito arriba</p></div>}
+                       </div>
+
+                       {/* GRÁFICA MULTILÍNEA BUJO STYLE */}
+                       <div className="pt-8 border-t border-slate-50 mt-auto">
+                          <p className="text-[10px] font-bold text-theme-main uppercase mb-6 text-left tracking-widest flex items-center gap-2"><TrendingUp size={14}/> Rastreador Global de Hábitos (Bujo)</p>
+                          <div className="w-full">
+                             {Object.keys(personalData.habitMatrix || {}).length > 0 ? (
+                                <MultiLineChart 
+                                   datasets={Object.keys(personalData.habitMatrix || {}).map((habit, idx) => {
+                                      const colors = ['#9B5DE5', '#34d399', '#f43f5e', '#fbbf24', '#0ea5e9', '#ec4899', '#8b5cf6'];
+                                      return {
+                                         label: habit,
+                                         color: colors[idx % colors.length],
+                                         data: chartDays.map(d => (personalData.habitMatrix||{})[habit]?.[d] ? 1 : 0)
+                                      };
+                                   })}
+                                   labels={chartDays}
+                                   height="h-64"
+                                />
+                             ) : (
+                                <p className="text-[10px] text-slate-400 italic">No hay hábitos registrados para graficar.</p>
+                             )}
+                          </div>
                        </div>
                     </section>
                   </div>
@@ -1053,15 +1098,7 @@
                                </div>
                                <span className={`text-[9px] font-bold px-3 py-1 rounded-full uppercase ${summary.paid ? 'bg-emerald-50 text-emerald-600' : 'bg-theme-surface text-theme-main'}`}>Corte: {summary.cutDate} | Pago: {summary.payDate}</span>
                             </div>
-                            <div className="space-y-3 mb-6 relative z-10">
-                               <div className="flex justify-between items-center text-xs"><span className="text-slate-400 font-bold uppercase tracking-wider">Variables</span><span className="font-semibold text-slate-600">{formatMoney(summary.variableTotal)}</span></div>
-                               <div className="flex justify-between items-center text-xs"><span className="text-slate-400 font-bold uppercase tracking-wider">Fijos / MSI</span><span className="font-semibold text-slate-600">{formatMoney(summary.fixedTotal)}</span></div>
-                            </div>
-                            <div className="pt-4 border-t border-slate-50 flex justify-between items-end relative z-10">
-                               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Total a Pagar</span>
-                               <span className="text-3xl font-serif font-bold text-theme-main italic">{formatMoney(summary.total)}</span>
-                            </div>
-                         </div>
+                            <div className="space-y-3 mb-6 relative z-10"><div className="flex justify-between items-center text-xs"><span className="text-slate-400 font-bold uppercase tracking-wider">Variables</span><span className="font-semibold text-slate-600">{formatMoney(summary.variableTotal)}</span></div><div className="flex justify-between items-center text-xs"><span className="text-slate-400 font-bold uppercase tracking-wider">Fijos / MSI</span><span className="font-semibold text-slate-600">{formatMoney(summary.fixedTotal)}</span></div></div><div className="pt-4 border-t border-slate-50 flex justify-between items-end relative z-10"><span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Total a Pagar</span><span className="text-3xl font-serif font-bold text-theme-main italic">{formatMoney(summary.total)}</span></div></div>
                       ))}
                    </div>
                 </section>
@@ -1083,17 +1120,9 @@
                             <table className="w-full text-left">
                               <thead><tr className="text-[9px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200"><th className="pb-3 px-3">Cuenta / Tarjeta</th><th className="pb-3 px-3 text-right">Gastos Diarios (Var)</th><th className="pb-3 px-3 text-right">Pagos Fijos (MSI)</th><th className="pb-3 px-3 text-right text-theme-dark">Total a Pagar</th></tr></thead>
                               <tbody>
-                                {accountSummaries.map(acc => (
-                                  <tr key={`sum-${acc.id}`} className={`border-b border-slate-100 last:border-0 ${acc.paid ? 'opacity-50' : ''}`}>
-                                    <td className="py-3 px-3 text-xs font-bold text-slate-700 flex items-center gap-2">
-                                       {acc.paid && <CheckCircle2 size={14} className="text-emerald-500"/>}
-                                       <span className={acc.paid ? 'line-through' : ''}>{acc.name}</span>
-                                    </td>
-                                    <td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.variableTotal)}</td>
-                                    <td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.fixedTotal)}</td>
-                                    <td className="py-3 px-3 text-right text-sm font-bold text-theme-main">{formatMoney(acc.total)}</td>
-                                  </tr>
-                                ))}
+                                {accountSummaries.map(acc => (<tr key={`sum-${acc.id}`} className={`border-b border-slate-100 last:border-0 ${acc.paid ? 'opacity-50' : ''}`}>
+                                  <td className="py-3 px-3 text-xs font-bold text-slate-700 flex items-center gap-2">{acc.paid && <CheckCircle2 size={14} className="text-emerald-500"/>}<span className={acc.paid ? 'line-through' : ''}>{acc.name}</span></td>
+                                  <td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.variableTotal)}</td><td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.fixedTotal)}</td><td className="py-3 px-3 text-right text-sm font-bold text-theme-main">{formatMoney(acc.total)}</td></tr>))}
                               </tbody>
                             </table>
                           </div>
@@ -1207,19 +1236,29 @@
                       </div>
 
                       <div className="w-full max-w-2xl bg-[#FCF8FF] p-8 rounded-[3rem] border border-theme-surface shadow-sm">
-                         <p className="text-[10px] font-bold text-theme-main uppercase tracking-widest mb-4">2. Sincronización Inteligente</p>
-                         <div className="flex flex-col sm:flex-row gap-4">
-                            <label className="flex-1 flex justify-center items-center gap-2 p-5 bg-indigo-500 text-white rounded-[2rem] font-bold text-[10px] tracking-widest uppercase cursor-pointer hover:bg-indigo-600 transition-all shadow-md">
-                               <BookOpen size={16} /> Importar Clases (A Cel)
+                         <p className="text-[10px] font-bold text-theme-main uppercase tracking-widest mb-4">2. Sincronización Inteligente (Por Módulos)</p>
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <label className="flex-1 flex justify-center items-center gap-2 p-4 bg-indigo-500 text-white rounded-[2rem] font-bold text-[10px] tracking-widest uppercase cursor-pointer hover:bg-indigo-600 transition-all shadow-md">
+                               <BookOpen size={16} /> Importar Clases
                                <input type="file" accept=".json" onChange={(e) => handleSmartSync(e, 'classes')} className="hidden" />
                             </label>
 
-                            <label className="flex-1 flex justify-center items-center gap-2 p-5 bg-[#FF9B85] text-white rounded-[2rem] font-bold text-[10px] tracking-widest uppercase cursor-pointer hover:opacity-90 transition-all shadow-md">
-                               <Dumbbell size={16} /> Importar Gym (A Comp)
+                            <label className="flex-1 flex justify-center items-center gap-2 p-4 bg-[#FF9B85] text-white rounded-[2rem] font-bold text-[10px] tracking-widest uppercase cursor-pointer hover:opacity-90 transition-all shadow-md">
+                               <Dumbbell size={16} /> Importar Salud
                                <input type="file" accept=".json" onChange={(e) => handleSmartSync(e, 'gym')} className="hidden" />
                             </label>
+                            
+                            <label className="flex-1 flex justify-center items-center gap-2 p-4 bg-emerald-500 text-white rounded-[2rem] font-bold text-[10px] tracking-widest uppercase cursor-pointer hover:bg-emerald-600 transition-all shadow-md">
+                               <NotebookPen size={16} /> Importar Bujo
+                               <input type="file" accept=".json" onChange={(e) => handleSmartSync(e, 'bujo')} className="hidden" />
+                            </label>
+                            
+                            <label className="flex-1 flex justify-center items-center gap-2 p-4 bg-slate-800 text-white rounded-[2rem] font-bold text-[10px] tracking-widest uppercase cursor-pointer hover:bg-black transition-all shadow-md">
+                               <Wallet size={16} /> Importar Cartera
+                               <input type="file" accept=".json" onChange={(e) => handleSmartSync(e, 'finance')} className="hidden" />
+                            </label>
                          </div>
-                         <p className="text-[9px] text-slate-400 mt-4 italic">El botón naranja solo extraerá salud, agua y pasos de tu respaldo. El botón azul solo extraerá tus grupos de la escuela.</p>
+                         <p className="text-[9px] text-slate-400 mt-5 italic">Sube tu archivo de respaldo general. Elige qué módulo quieres extraer y sobreescribir. Los demás datos de tu agenda no se verán afectados.</p>
                       </div>
                    </section>
 
