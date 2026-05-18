@@ -202,12 +202,14 @@
       
       const [showResetModal, setShowResetModal] = useState(false);
       const [showFactoryResetModal, setShowFactoryResetModal] = useState(false);
+      const [showResetFinanceModal, setShowResetFinanceModal] = useState(false); // Modal para reset de finanzas
       const [toastMsg, setToastMsg] = useState(null);
       const [currentCalMonth, setCurrentCalMonth] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
       const [showEventModal, setShowEventModal] = useState({ show: false, date: null, text: '' });
       const [scheduleModal, setScheduleModal] = useState({ show: false, itemType: null, itemId: null, itemName: '', date: selectedDate });
       
       const [showExpenseModal, setShowExpenseModal] = useState(false);
+      const [showAbonoModal, setShowAbonoModal] = useState(false); // Modal para Abonos
       const [showFixedModal, setShowFixedModal] = useState(false);
       const [showGymModal, setShowGymModal] = useState(false);
       const [showGroupModal, setShowGroupModal] = useState(false); 
@@ -223,6 +225,7 @@
 
       // Formularios
       const [expForm, setExpForm] = useState({ amount: '', concept: '', accountId: '' });
+      const [abonoForm, setAbonoForm] = useState({ amount: '', accountId: '' }); // Form de abono
       const [fixForm, setFixForm] = useState({ name: '', amount: '', current: '', total: '', accountId: '' });
       const [accForm, setAccForm] = useState({ name: '', cut: '', pay: '' });
       const [groupForm, setGroupForm] = useState({ name: '', subj: '', schedule: [] });
@@ -231,7 +234,7 @@
       
       const [chartRange, setChartRange] = useState('week'); 
 
-      // --- PERSISTENCIA BLINDADA V23 ---
+      // --- PERSISTENCIA BLINDADA ---
       const [groups, setGroups] = useState(() => {
         const saved = localStorage.getItem('bitacora_grupos_v23') || localStorage.getItem('bitacora_grupos_v22') || localStorage.getItem('bitacora_grupos_v21') || localStorage.getItem('bitacora_grupos_v20') || localStorage.getItem('bitacora_grupos_v19');
         if (saved) {
@@ -386,11 +389,18 @@
 
       // --- ACCIONES GENERALES ---
       const showToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 3000); };
+      
       const addSession = (type, contentId, dateStr, groupIdToUse) => {
         const targetGroupId = groupIdToUse || activeGroupId;
         const newSession = { id: Date.now(), date: dateStr, type, contentId, notes: "", completed: false };
         setGroups(prev => prev.map(g => g.id === targetGroupId ? { ...g, sessions: [...(g.sessions || []), newSession].sort((a,b) => new Date(a.date)-new Date(b.date)) } : g));
         showToast("Sesión programada");
+      };
+
+      // NUEVO: BORRAR SESIÓN PROGRAMADA
+      const deleteSession = (groupId, sessionId) => {
+         setGroups(prev => prev.map(g => g.id === groupId ? { ...g, sessions: (g.sessions||[]).filter(s => s.id !== sessionId) } : g));
+         showToast("Sesión eliminada");
       };
 
       const updateSessionNotes = (sessionId, notes) => {
@@ -421,7 +431,6 @@
          showToast(`${lines.length} elementos importados`);
       };
 
-      // --- NUEVO: SMART SYNC HANDLER Y EXPORT ---
       const handleSmartSync = (e, type) => {
          const file = e.target.files[0];
          if (!file) return;
@@ -486,19 +495,9 @@
          } else if (type === 'classes') {
             exportData = { groups };
          } else if (type === 'gym') {
-            exportData = { 
-               personalData: { 
-                  health: personalData.health, waterLogs: personalData.waterLogs, 
-                  sleepLogs: personalData.sleepLogs, stepsLogs: personalData.stepsLogs 
-               } 
-            };
+            exportData = { personalData: { health: personalData.health, waterLogs: personalData.waterLogs, sleepLogs: personalData.sleepLogs, stepsLogs: personalData.stepsLogs } };
          } else if (type === 'bujo') {
-            exportData = { 
-               personalData: { 
-                  tasks: personalData.tasks, habitMatrix: personalData.habitMatrix, 
-                  moodLogs: personalData.moodLogs, savingsLogs: personalData.savingsLogs, quotes: personalData.quotes 
-               } 
-            };
+            exportData = { personalData: { tasks: personalData.tasks, habitMatrix: personalData.habitMatrix, moodLogs: personalData.moodLogs, savingsLogs: personalData.savingsLogs, quotes: personalData.quotes } };
          } else if (type === 'finance') {
             exportData = { personalData: { finance: personalData.finance } };
          }
@@ -544,7 +543,37 @@
       
       // FINANZAS
       const formatMoney = (n) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n);
-      const addTransaction = (amount, concept, accountId) => { setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, transactions: [{ id: Date.now(), amount: parseFloat(amount), concept, date: selectedDate, accountId, verified: false }, ...(prev.finance?.transactions || [])] } })); showToast("Gasto registrado"); };
+      
+      const addTransaction = (amount, concept, accountId) => { 
+         setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, transactions: [{ id: Date.now(), amount: parseFloat(amount), concept, date: selectedDate, accountId, verified: false }, ...(prev.finance?.transactions || [])] } })); 
+         showToast("Gasto registrado"); 
+      };
+
+      // NUEVO: ABONAR A LA CUENTA
+      const addAbono = (amount, accountId) => {
+         setPersonalData(prev => ({ 
+            ...prev, 
+            finance: { 
+               ...prev.finance, 
+               transactions: [{ id: Date.now(), amount: -Math.abs(parseFloat(amount)), concept: 'Abono / Pago a Tarjeta', date: selectedDate, accountId, verified: true }, ...(prev.finance?.transactions || [])] 
+            } 
+         }));
+         showToast("Abono registrado");
+      };
+
+      // NUEVO: RESET DE FINANZAS
+      const resetFinanceMonth = () => {
+         setPersonalData(prev => ({
+            ...prev,
+            finance: {
+               ...prev.finance,
+               transactions: []
+            }
+         }));
+         setShowResetFinanceModal(false);
+         showToast("Mes reiniciado en ceros");
+      };
+
       const addFixedPayment = (name, amount, totalMonths, currentMonth, accountId) => { setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, fixedPayments: [...(prev.finance?.fixedPayments || []), { id: Date.now(), name, amount: parseFloat(amount), totalMonths: parseInt(totalMonths), currentMonth: parseInt(currentMonth), accountId }] } })); showToast("Pago añadido"); };
       const toggleVerifyTx = (txId) => setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, transactions: (prev.finance?.transactions || []).map(t => t.id === txId ? { ...t, verified: !t.verified } : t) } }));
       const incrementFixedMonth = (id) => setPersonalData(prev => ({ ...prev, finance: { ...prev.finance, fixedPayments: (prev.finance?.fixedPayments || []).map(f => f.id === id ? { ...f, currentMonth: Math.min(f.totalMonths, f.currentMonth + 1) } : f ) } }));
@@ -714,8 +743,15 @@
                           {(activeGroup.sessions || []).map((s, idx) => {
                              const item = s.type === 'tema' ? (activeGroup.topics||[]).find(t=>t.id===s.contentId) : (activeGroup.adas||[]).find(a=>a.id===s.contentId);
                              return (
-                               <div key={s.id} className={`p-6 rounded-[2.5rem] border transition-all ${idx === 0 ? 'border-theme-main bg-theme-surface/30' : 'border-slate-50 bg-slate-50/30'}`}>
-                                  <div className="flex justify-between items-center mb-4"><span className="text-[10px] font-bold text-theme-main italic uppercase">{s.date}</span><span className="text-[8px] px-2 py-0.5 rounded-full font-bold uppercase bg-white shadow-sm text-slate-500">{s.type}</span></div>
+                               <div key={s.id} className={`p-6 rounded-[2.5rem] border transition-all ${idx === 0 ? 'border-theme-main bg-theme-surface/30' : 'border-slate-50 bg-slate-50/30'} group/sess`}>
+                                  <div className="flex justify-between items-center mb-4">
+                                     <span className="text-[10px] font-bold text-theme-main italic uppercase flex items-center gap-2">
+                                        {s.date} 
+                                        {/* NUEVO BOTON BORRAR SESIÓN */}
+                                        <button onClick={() => deleteSession(activeGroupId, s.id)} className="opacity-0 group-hover/sess:opacity-100 text-red-300 hover:text-red-500 transition-opacity" title="Eliminar sesión"><Trash2 size={12}/></button>
+                                     </span>
+                                     <span className="text-[8px] px-2 py-0.5 rounded-full font-bold uppercase bg-white shadow-sm text-slate-500">{s.type}</span>
+                                  </div>
                                   <div className="flex items-center gap-4 mb-4">
                                      <button onClick={() => toggleSessionStatus(activeGroupId, s.id)} className={s.completed ? 'text-theme-main' : 'text-slate-300'}>{s.completed ? <CheckCircle2 size={24}/> : <Circle size={24}/>}</button>
                                      <p className={`text-lg font-serif italic font-bold ${s.completed ? 'line-through opacity-50 text-slate-400' : 'text-theme-dark'}`}>{item?.title || 'Elemento eliminado'}</p>
@@ -724,6 +760,7 @@
                                </div>
                              );
                           })}
+                          {(activeGroup.sessions || []).length === 0 && <div className="text-center py-20 text-slate-300 italic text-sm">Aún no hay sesiones programadas en este grupo.</div>}
                        </div>
                     </section>
                  </div>
@@ -761,7 +798,15 @@
                             {daySess.length > 0 ? daySess.map(s => {
                               const item = s.type === 'tema' ? (g.topics||[]).find(t=>t.id===s.contentId) : s.type === 'ada' ? (g.adas||[]).find(a=>a.id===s.contentId) : (g.tasks||[]).find(t=>t.id===s.contentId);
                               return (
-                                <div key={s.id} className="flex items-start gap-3 p-4 bg-slate-50/70 border border-slate-100 rounded-2xl group/item"><button onClick={() => toggleSessionStatus(g.id, s.id)} className={`mt-0.5 transition-colors ${s.completed ? 'text-theme-sec' : 'text-slate-300 hover:text-theme-main'}`}>{s.completed ? <CheckCircle2 size={20}/> : <Circle size={20}/>}</button><div className="flex-1"><span className={`text-[8px] px-2 py-0.5 rounded-full font-bold uppercase mb-1 inline-block ${s.type === 'tema' ? 'bg-slate-200 text-slate-500' : s.type === 'tarea' ? 'bg-yellow-100 text-yellow-600' : 'bg-theme-surface text-theme-main'}`}>{s.type}</span><p className={`text-sm font-semibold italic leading-tight ${s.completed ? 'line-through text-slate-400 opacity-70' : 'text-slate-700'}`}>{item?.title || item?.text || "Elemento eliminado"}</p></div></div>
+                                <div key={s.id} className="flex items-start gap-3 p-4 bg-slate-50/70 border border-slate-100 rounded-2xl group/item">
+                                   <button onClick={() => toggleSessionStatus(g.id, s.id)} className={`mt-0.5 transition-colors ${s.completed ? 'text-theme-sec' : 'text-slate-300 hover:text-theme-main'}`}>{s.completed ? <CheckCircle2 size={20}/> : <Circle size={20}/>}</button>
+                                   <div className="flex-1">
+                                      <span className={`text-[8px] px-2 py-0.5 rounded-full font-bold uppercase mb-1 inline-block ${s.type === 'tema' ? 'bg-slate-200 text-slate-500' : s.type === 'tarea' ? 'bg-yellow-100 text-yellow-600' : 'bg-theme-surface text-theme-main'}`}>{s.type}</span>
+                                      <p className={`text-sm font-semibold italic leading-tight ${s.completed ? 'line-through text-slate-400 opacity-70' : 'text-slate-700'}`}>{item?.title || item?.text || "Elemento eliminado"}</p>
+                                   </div>
+                                   {/* BOTON BORRAR TAMBIEN EN VISTA DIARIA */}
+                                   <button onClick={() => deleteSession(g.id, s.id)} className="opacity-0 group-hover/item:opacity-100 text-red-200 hover:text-red-500 transition-opacity ml-2 pt-1"><Trash2 size={14}/></button>
+                                </div>
                               );
                             }) : (<div className="p-4 border-2 border-dashed border-theme-surface rounded-2xl flex flex-col items-center justify-center text-slate-400 bg-slate-50/30"><CalendarClock size={24} className="mb-2 opacity-50 text-theme-main" /><p className="text-[11px] uppercase tracking-widest font-bold mb-1">Clase sin planear</p><p className="text-xs italic">Abre el grupo en el menú para programarle un tema o ADA hoy.</p></div>)}
                           </div>
@@ -842,7 +887,6 @@
                           })}
                        </div>
                     </section>
-
                     <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg">
                        <h3 className="text-[10px] font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2 italic"><Moon size={14}/> Descanso & Agua</h3>
                        <div className="space-y-6">
@@ -860,7 +904,6 @@
                           </div>
                        </div>
                     </section>
-
                     <div className="grid grid-cols-2 gap-4">
                        <section className="bg-emerald-50 p-6 rounded-[2.5rem] border border-emerald-100 shadow-sm text-center">
                           <Footprints size={24} className="mx-auto mb-2 text-emerald-500" />
@@ -876,7 +919,6 @@
                        </section>
                     </div>
                   </div>
-
                   <div className="lg:col-span-2">
                     <section className="bg-white p-10 rounded-[4rem] border border-theme-surface shadow-xl h-full flex flex-col">
                        <div className="flex justify-between items-center mb-8 border-b border-slate-50 pb-6">
@@ -886,7 +928,6 @@
                              <button onClick={()=>{const i=document.getElementById('inlineHabitInput'); if(i.value){addNewMatrixHabit(i.value); i.value='';}}} className="p-1.5 bg-theme-main text-white rounded-full hover:scale-110 transition-transform"><Plus size={12}/></button>
                           </div>
                        </div>
-                       
                        <div className="flex-1 overflow-x-auto custom-scrollbar mb-6">
                           <table className="w-full text-left border-separate border-spacing-y-2">
                              <thead>
@@ -934,7 +975,6 @@
                           </table>
                           {Object.keys(personalData.habitMatrix || {}).length === 0 && <div className="text-center py-20 opacity-50"><ListChecks size={40} className="mx-auto mb-4 text-theme-main"/><p className="text-xs font-bold text-slate-500 uppercase tracking-widest italic">Añade tu primer hábito arriba</p></div>}
                        </div>
-
                        <div className="pt-8 border-t border-slate-50 mt-auto">
                           <p className="text-[10px] font-bold text-theme-main uppercase mb-6 text-left tracking-widest flex items-center gap-2"><TrendingUp size={14}/> Rastreador Global de Hábitos (Bujo)</p>
                           <div className="w-full">
@@ -942,11 +982,7 @@
                                 <MultiLineChart 
                                    datasets={Object.keys(personalData.habitMatrix || {}).map((habit, idx) => {
                                       const colors = ['#9B5DE5', '#34d399', '#f43f5e', '#fbbf24', '#0ea5e9', '#ec4899', '#8b5cf6'];
-                                      return {
-                                         label: habit,
-                                         color: colors[idx % colors.length],
-                                         data: chartDays.map(d => (personalData.habitMatrix||{})[habit]?.[d] ? 1 : 0)
-                                      };
+                                      return { label: habit, color: colors[idx % colors.length], data: chartDays.map(d => (personalData.habitMatrix||{})[habit]?.[d] ? 1 : 0) };
                                    })}
                                    labels={chartDays}
                                    height="h-64"
@@ -1053,12 +1089,16 @@
                 <header className="mb-10 flex justify-between items-end border-b border-theme-surface pb-8">
                   <div><p className="text-[12px] font-bold text-theme-dark uppercase tracking-widest mb-2 italic">Mis Cuentas</p><h2 className="text-6xl font-serif font-bold text-theme-dark italic tracking-tighter">Bóveda Personal</h2></div>
                   <div className="flex gap-4">
+                    <button onClick={() => setShowAbonoModal(true)} className="p-4 px-8 bg-emerald-500 text-white rounded-full font-bold text-xs tracking-widest uppercase shadow-lg hover:scale-105 transition-all flex items-center gap-2"><Plus size={16}/> Abonar</button>
                     <button onClick={() => setShowExpenseModal(true)} className="p-4 px-8 bg-theme-main text-white rounded-full font-bold text-xs tracking-widest uppercase shadow-lg hover:scale-105 transition-all flex items-center gap-2"><ArrowDownLeft size={16}/> Nuevo Gasto</button>
                     <button onClick={() => setShowFixedModal(true)} className="p-4 px-8 bg-theme-sec text-white rounded-full font-bold text-xs tracking-widest uppercase shadow-lg hover:scale-105 transition-all flex items-center gap-2"><RefreshCw size={16}/> Pago Fijo / MSI</button>
                   </div>
                 </header>
                 <section className="mb-12">
-                   <h3 className="text-xs font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2"><PieChart size={16}/> Concentrado de Pagos por Cuenta</h3>
+                   <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-xs font-bold uppercase text-slate-400 tracking-widest flex items-center gap-2"><PieChart size={16}/> Concentrado de Pagos por Cuenta</h3>
+                      <button onClick={() => setShowResetFinanceModal(true)} className="text-[10px] text-red-400 font-bold uppercase tracking-widest bg-red-50 px-4 py-2 rounded-full hover:bg-red-100 transition-colors">Reiniciar Mes</button>
+                   </div>
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {accountSummaries.map(summary => (
                          <div key={summary.id} className={`bg-white p-6 rounded-[2.5rem] border ${summary.paid ? 'border-emerald-100 opacity-70' : 'border-theme-surface'} shadow-xl relative overflow-hidden group`}>
@@ -1094,20 +1134,18 @@
                             <table className="w-full text-left">
                               <thead><tr className="text-[9px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200"><th className="pb-3 px-3">Cuenta / Tarjeta</th><th className="pb-3 px-3 text-right">Gastos Diarios (Var)</th><th className="pb-3 px-3 text-right">Pagos Fijos (MSI)</th><th className="pb-3 px-3 text-right text-theme-dark">Total a Pagar</th></tr></thead>
                               <tbody>
-                                {accountSummaries.map(acc => (<tr key={`sum-${acc.id}`} className={`border-b border-slate-100 last:border-0 ${acc.paid ? 'opacity-50' : ''}`}>
-                                  <td className="py-3 px-3 text-xs font-bold text-slate-700 flex items-center gap-2">{acc.paid && <CheckCircle2 size={14} className="text-emerald-500"/>}<span className={acc.paid ? 'line-through' : ''}>{acc.name}</span></td>
-                                  <td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.variableTotal)}</td><td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.fixedTotal)}</td><td className="py-3 px-3 text-right text-sm font-bold text-theme-main">{formatMoney(acc.total)}</td></tr>))}
+                                {accountSummaries.map(acc => (<tr key={`sum-${acc.id}`} className={`border-b border-slate-100 last:border-0 ${acc.paid ? 'opacity-50' : ''}`}><td className="py-3 px-3 text-xs font-bold text-slate-700 flex items-center gap-2">{acc.paid && <CheckCircle2 size={14} className="text-emerald-500"/>}<span className={acc.paid ? 'line-through' : ''}>{acc.name}</span></td><td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.variableTotal)}</td><td className="py-3 px-3 text-right text-xs text-slate-600">{formatMoney(acc.fixedTotal)}</td><td className="py-3 px-3 text-right text-sm font-bold text-theme-main">{formatMoney(acc.total)}</td></tr>))}
                               </tbody>
                             </table>
                           </div>
                         </div>
                         <div>
-                          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ListChecks size={14}/> Detalle de Gastos Diarios</h4>
+                          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ListChecks size={14}/> Detalle de Movimientos Diarios</h4>
                           <div className="overflow-x-auto">
                             <table className="w-full text-left">
                               <thead><tr className="text-[10px] font-bold text-slate-300 uppercase tracking-widest border-b border-slate-50"><th className="pb-4 px-4">✓</th><th className="pb-4 px-4">Fecha</th><th className="pb-4 px-4">Concepto</th><th className="pb-4 px-4">Tarjeta</th><th className="pb-4 px-4 text-right">Monto</th></tr></thead>
                               <tbody>
-                                 {(personalData.finance?.transactions || []).map(t => (<tr key={t.id} className={`group hover:bg-theme-surface/50 transition-all border-b border-slate-50 ${t.verified ? 'opacity-50' : ''}`}><td className="py-4 px-4"><button onClick={() => toggleVerifyTx(t.id)} className={t.verified ? 'text-theme-main' : 'text-slate-200'}>{t.verified ? <CheckCircle2 size={18}/> : <Circle size={18}/>}</button></td><td className="py-4 px-4 text-[10px] font-bold text-slate-400">{t.date}</td><td className="py-4 px-4 text-xs font-semibold text-slate-600 italic">{t.concept}</td><td className="py-4 px-4"><span className="px-3 py-1 bg-white rounded-full text-[9px] font-bold uppercase text-slate-400 shadow-sm">{(personalData.finance?.accounts || []).find(a=>a.id===t.accountId)?.name}</span></td><td className="py-4 px-4 text-right font-bold text-slate-700 text-sm">{formatMoney(t.amount)}</td></tr>))}
+                                 {(personalData.finance?.transactions || []).map(t => (<tr key={t.id} className={`group hover:bg-theme-surface/50 transition-all border-b border-slate-50 ${t.verified ? 'opacity-50' : ''}`}><td className="py-4 px-4"><button onClick={() => toggleVerifyTx(t.id)} className={t.verified ? 'text-theme-main' : 'text-slate-200'}>{t.verified ? <CheckCircle2 size={18}/> : <Circle size={18}/>}</button></td><td className="py-4 px-4 text-[10px] font-bold text-slate-400">{t.date}</td><td className="py-4 px-4 text-xs font-semibold text-slate-600 italic">{t.concept}</td><td className="py-4 px-4"><span className="px-3 py-1 bg-white rounded-full text-[9px] font-bold uppercase text-slate-400 shadow-sm">{(personalData.finance?.accounts || []).find(a=>a.id===t.accountId)?.name}</span></td><td className={`py-4 px-4 text-right font-bold text-sm ${t.amount < 0 ? 'text-emerald-500' : 'text-slate-700'}`}>{formatMoney(t.amount)}</td></tr>))}
                               </tbody>
                             </table>
                           </div>
@@ -1267,7 +1305,7 @@
             )}
           </main>
 
-          {/* MODALES FLOTANTES */}
+          {/* MODALES FLOTANTES EN RAÍZ */}
           {showGymModal && (
             <div className="fixed inset-0 z-[90] bg-slate-900/80 backdrop-blur-md flex items-end md:items-center justify-center animate-in slide-in-from-bottom duration-300">
                <div className="bg-[#FCF8FF] w-full max-w-lg h-[90vh] md:h-[85vh] rounded-t-[3rem] md:rounded-[3rem] shadow-2xl flex flex-col overflow-hidden relative">
@@ -1342,9 +1380,48 @@
 
           {scheduleModal.show && (<div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6"><div className="bg-white w-full max-w-sm p-8 rounded-[3rem] shadow-2xl"><h3 className="text-2xl font-serif font-bold text-theme-dark italic mb-6 text-center">Programar para...</h3><input type="date" value={scheduleModal.date} onChange={e=>setScheduleModal({...scheduleModal, date: e.target.value})} className="w-full p-5 bg-slate-50 rounded-2xl border-none mb-6 text-center font-bold text-theme-main"/><div className="flex gap-4"><button onClick={()=>setScheduleModal({show:false})} className="flex-1 p-4 rounded-xl font-bold text-[10px] text-slate-400 uppercase tracking-widest">Cancelar</button><button onClick={()=>{addSession(scheduleModal.itemType, scheduleModal.itemId, scheduleModal.date); setScheduleModal({show:false})}} className="flex-1 p-4 rounded-xl font-bold text-[10px] bg-theme-main text-white uppercase tracking-widest">Aceptar</button></div></div></div>)}
           {showEventModal.show && (<div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6"><div className="bg-white w-full max-w-sm p-8 rounded-[3rem] shadow-2xl"><h3 className="text-2xl font-serif font-bold text-theme-dark italic mb-2">Añadir Evento</h3><p className="text-xs text-slate-400 mb-6 uppercase tracking-widest">{showEventModal.date}</p><textarea className="w-full h-32 p-4 bg-slate-50 rounded-2xl focus:outline-none text-sm italic shadow-inner resize-none text-slate-700" placeholder="Ej. Examen Parcial..." value={showEventModal.text} onChange={(e) => setShowEventModal({...showEventModal, text: e.target.value})}></textarea><div className="flex gap-4 mt-6"><button onClick={() => setShowEventModal({show:false, date:null, text:''})} className="flex-1 p-4 rounded-xl font-bold text-[10px] text-slate-400 uppercase tracking-widest">Cancelar</button><button onClick={saveCalendarEvent} className="flex-1 p-4 rounded-xl font-bold text-[10px] bg-theme-main text-white uppercase tracking-widest shadow-lg">Guardar</button></div></div></div>)}
+          
+          {/* RESET FINANCE MODAL */}
+          {showResetFinanceModal && (
+            <div className="fixed inset-0 z-[70] bg-red-900/40 backdrop-blur-md flex items-center justify-center p-6">
+               <div className="bg-white w-full max-w-md p-10 rounded-[3rem] shadow-2xl text-center">
+                  <AlertCircle size={60} className="text-red-400 mx-auto mb-6" />
+                  <h3 className="text-3xl font-serif font-bold text-slate-800 italic mb-4">¿Iniciar Nuevo Mes?</h3>
+                  <p className="text-sm text-slate-500 mb-8 italic leading-relaxed">Esto limpiará todos tus gastos variables registrados para que tu tarjeta empiece en ceros. (Tus pagos fijos o MSI se conservarán).</p>
+                  <div className="flex gap-4">
+                     <button onClick={() => setShowResetFinanceModal(false)} className="flex-1 p-5 rounded-2xl font-bold text-[11px] text-slate-500 bg-slate-100 uppercase tracking-widest hover:bg-slate-200">Cancelar</button>
+                     <button onClick={resetFinanceMonth} className="flex-1 p-5 rounded-2xl font-bold text-[11px] bg-red-400 text-white uppercase tracking-widest shadow-lg hover:bg-red-500">Limpiar Mes</button>
+                  </div>
+               </div>
+            </div>
+          )}
+
           {showResetModal && (<div className="fixed inset-0 z-[70] bg-red-900/40 backdrop-blur-md flex items-center justify-center p-6"><div className="bg-white w-full max-w-md p-10 rounded-[3rem] shadow-2xl text-center"><AlertCircle size={60} className="text-red-400 mx-auto mb-6" /><h3 className="text-3xl font-serif font-bold text-slate-800 italic mb-4">¿Fin del Ciclo?</h3><p className="text-sm text-slate-500 mb-8 italic leading-relaxed">Se limpiará la bitácora y sesiones de este grupo. Tus catálogos de Temas y ADAs se conservarán.</p><div className="flex gap-4"><button onClick={() => setShowResetModal(false)} className="flex-1 p-5 rounded-2xl font-bold text-[11px] text-slate-500 bg-slate-100 uppercase tracking-widest">Cancelar</button><button onClick={() => { setGroups(prev => prev.map(g => g.id === activeGroupId ? {...g, topics: (g.topics||[]).map(t=>({...t, completed:false})), adas: (g.adas||[]).map(a=>({...a, completed:false})), sessions: [], tasks: []} : g)); setShowResetModal(false); showToast("Ciclo reseteado"); }} className="flex-1 p-5 rounded-2xl font-bold text-[11px] bg-red-400 text-white uppercase tracking-widest shadow-lg">Resetear</button></div></div></div>)}
           {groupToDelete && (<div className="fixed inset-0 z-[70] bg-red-900/40 backdrop-blur-md flex items-center justify-center p-6"><div className="bg-white w-full max-w-md p-10 rounded-[3rem] shadow-2xl text-center"><AlertCircle size={60} className="text-red-400 mx-auto mb-6" /><h3 className="text-3xl font-serif font-bold text-slate-800 italic mb-4">¿Eliminar {groupToDelete.name}?</h3><p className="text-sm text-slate-500 mb-8">Esta acción es irreversible. Se perderán todos sus temas, ADAs y notas asociadas.</p><div className="flex gap-4"><button onClick={() => setGroupToDelete(null)} className="flex-1 p-5 rounded-2xl font-bold text-[11px] text-slate-500 bg-slate-100 uppercase tracking-widest">Cancelar</button><button onClick={deleteGroup} className="flex-1 p-5 rounded-2xl font-bold text-[11px] bg-red-400 text-white uppercase tracking-widest shadow-lg">Sí, eliminar</button></div></div></div>)}
           {showFactoryResetModal && (<div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6 animate-in zoom-in duration-200"><div className="bg-white w-full max-w-sm p-10 rounded-[3rem] shadow-2xl text-center"><div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-6 shadow-inner"><Lock size={24} /></div><h3 className="text-2xl font-serif font-bold text-slate-800 italic mb-2">Restablecer Agenda</h3><p className="text-[10px] text-slate-400 mb-6 uppercase tracking-widest font-bold">Requiere Autenticación</p><input type="password" id="resetPinInput" placeholder="PIN..." className="w-full p-4 mb-6 bg-slate-50 rounded-2xl text-center text-lg font-bold tracking-[0.5em] text-slate-700 focus:outline-none focus:ring-2 focus:ring-theme-surface shadow-inner" maxLength={4}/><div className="flex gap-4"><button onClick={() => setShowFactoryResetModal(false)} className="flex-1 p-4 rounded-xl font-bold text-[10px] text-slate-400 hover:bg-slate-50 uppercase tracking-widest">Cancelar</button><button onClick={() => { const pin = document.getElementById('resetPinInput').value; if(pin === '0000') handleFactoryReset(); else { showToast("PIN Incorrecto"); document.getElementById('resetPinInput').value = ''; } }} className="flex-1 p-4 rounded-xl font-bold text-[10px] bg-slate-800 text-white uppercase tracking-widest shadow-lg hover:bg-black transition-colors">Verificar</button></div></div></div>)}
+          
+          {/* ABONO MODAL */}
+          {showAbonoModal && (
+            <div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6">
+              <div className="bg-white w-full max-w-sm p-10 rounded-[4rem] shadow-2xl relative">
+                <button onClick={()=>setShowAbonoModal(false)} className="absolute top-8 right-8 text-slate-400 hover:text-slate-600"><X/></button>
+                <h3 className="text-3xl font-serif font-bold text-theme-dark italic mb-2">Abonar a Cuenta</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-8 italic">Se restará del total a pagar</p>
+                <div className="space-y-4">
+                  <div className="relative">
+                     <span className="absolute left-4 top-4 font-bold text-slate-400">$</span>
+                     <input type="number" value={abonoForm.amount} onChange={e=>setAbonoForm({...abonoForm, amount: e.target.value})} placeholder="0.00" className="w-full p-4 pl-10 bg-emerald-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-200 text-lg font-bold text-emerald-700 placeholder:text-emerald-300" />
+                  </div>
+                  <select value={abonoForm.accountId} onChange={e=>setAbonoForm({...abonoForm, accountId: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border-none text-xs font-bold uppercase tracking-widest text-slate-700 focus:outline-none focus:ring-2 focus:ring-theme-surface">
+                     <option value="" disabled>Selecciona la cuenta...</option>
+                     {(personalData.finance?.accounts || []).map(a => <option key={a.id} value={a.id} className="text-slate-700">{a.name}</option>)}
+                  </select>
+                  <button onClick={() => { if(abonoForm.amount && abonoForm.accountId) { addAbono(abonoForm.amount, abonoForm.accountId); setShowAbonoModal(false); setAbonoForm({ amount: '', accountId: '' }); } else showToast("Ingresa monto y tarjeta"); }} className="w-full p-5 bg-emerald-500 text-white rounded-3xl font-bold text-xs tracking-[0.2em] uppercase shadow-xl hover:scale-105 hover:bg-emerald-600 transition-all mt-4">Registrar Abono</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {showExpenseModal && (<div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6"><div className="bg-white w-full max-w-sm p-10 rounded-[4rem] shadow-2xl relative"><button onClick={()=>setShowExpenseModal(false)} className="absolute top-8 right-8 text-slate-400 hover:text-slate-600"><X/></button><h3 className="text-3xl font-serif font-bold text-theme-dark italic mb-2">Capturar Gasto</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-8 italic">Para el día: {selectedDate}</p><div className="space-y-4"><div className="relative"><span className="absolute left-4 top-4 font-bold text-slate-400">$</span><input type="number" value={expForm.amount} onChange={e=>setExpForm({...expForm, amount: e.target.value})} placeholder="0.00" className="w-full p-4 pl-10 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-theme-surface text-lg font-bold text-slate-700" /></div><input type="text" value={expForm.concept} onChange={e=>setExpForm({...expForm, concept: e.target.value})} placeholder="Concepto (Ej. Súper...)" className="w-full p-4 bg-slate-50 rounded-2xl border-none text-sm italic text-slate-700" /><select value={expForm.accountId} onChange={e=>setExpForm({...expForm, accountId: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border-none text-xs font-bold uppercase tracking-widest text-slate-700 focus:outline-none focus:ring-2 focus:ring-theme-surface"><option value="" disabled>Selecciona la cuenta...</option>{(personalData.finance?.accounts || []).map(a => <option key={a.id} value={a.id} className="text-slate-700">{a.name}</option>)}</select><button onClick={() => { if(expForm.amount && expForm.concept && expForm.accountId) { addTransaction(expForm.amount, expForm.concept, expForm.accountId); setShowExpenseModal(false); setExpForm({ amount: '', concept: '', accountId: '' }); } else showToast("Llena los campos y selecciona tarjeta"); }} className="w-full p-5 bg-theme-dark text-white rounded-3xl font-bold text-xs tracking-[0.2em] uppercase shadow-xl hover:scale-105 transition-all mt-4">Guardar Gasto</button></div></div></div>)}
           {showFixedModal && (<div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6"><div className="bg-white w-full max-w-sm p-10 rounded-[4rem] shadow-2xl relative"><button onClick={()=>setShowFixedModal(false)} className="absolute top-8 right-8 text-slate-400 hover:text-slate-600"><X/></button><h3 className="text-3xl font-serif font-bold text-theme-dark italic mb-6">Nuevo Pago MSI</h3><div className="space-y-4"><input type="text" value={fixForm.name} onChange={e=>setFixForm({...fixForm, name: e.target.value})} placeholder="Nombre (Ej. Laptop)" className="w-full p-4 bg-slate-50 rounded-2xl text-sm font-semibold text-slate-700" /><div className="relative"><span className="absolute left-4 top-4 font-bold text-slate-400">$</span><input type="number" value={fixForm.amount} onChange={e=>setFixForm({...fixForm, amount: e.target.value})} placeholder="Monto mensual" className="w-full p-4 pl-10 bg-slate-50 rounded-2xl text-sm font-bold text-slate-700" /></div><div className="flex gap-4"><input type="number" value={fixForm.current} onChange={e=>setFixForm({...fixForm, current: e.target.value})} placeholder="Mes actual" className="w-1/2 p-4 bg-slate-50 rounded-2xl text-sm text-slate-700 text-center" /><input type="number" value={fixForm.total} onChange={e=>setFixForm({...fixForm, total: e.target.value})} placeholder="Total meses" className="w-1/2 p-4 bg-slate-50 rounded-2xl text-sm text-slate-700 text-center" /></div><select value={fixForm.accountId} onChange={e=>setFixForm({...fixForm, accountId: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold uppercase tracking-widest text-slate-700 focus:outline-none focus:ring-2 focus:ring-theme-surface"><option value="" disabled>Selecciona la cuenta...</option>{(personalData.finance?.accounts || []).map(a => <option key={a.id} value={a.id} className="text-slate-700">{a.name}</option>)}</select><button onClick={() => { if(fixForm.name && fixForm.amount && fixForm.total && fixForm.accountId) { addFixedPayment(fixForm.name, fixForm.amount, fixForm.total, fixForm.current || 1, fixForm.accountId); setShowFixedModal(false); setFixForm({ name: '', amount: '', current: '', total: '', accountId: '' }); } else showToast("Llena los campos y selecciona tarjeta"); }} className="w-full p-5 bg-theme-sec text-white rounded-3xl font-bold text-xs tracking-widest uppercase shadow-xl mt-4">Programar MSI</button></div></div></div>)}
           {showImportModal && (<div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in"><div className="bg-white w-full max-w-lg p-10 rounded-[3rem] shadow-2xl relative"><button onClick={()=>setShowImportModal(false)} className="absolute top-8 right-8 text-slate-400 hover:text-slate-600"><X/></button><h3 className="text-3xl font-serif font-bold text-theme-dark italic mb-2">Importar Datos</h3><p className="text-xs text-slate-400 mb-6 italic">Pega la columna de tu Excel (un tema/ADA por línea)</p><div className="flex gap-4 mb-4"><button onClick={()=>setImportType('topics')} className={`flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-colors ${importType === 'topics' ? 'bg-theme-main text-white' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}>Temas</button><button onClick={()=>setImportType('adas')} className={`flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-colors ${importType === 'adas' ? 'bg-theme-main text-white' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}>ADAs</button></div><textarea value={importText} onChange={e=>setImportText(e.target.value)} placeholder="Tiro Parabólico&#10;Leyes de Newton&#10;..." className="w-full h-48 bg-slate-50 p-4 rounded-2xl text-sm italic focus:outline-none focus:ring-2 focus:ring-theme-surface text-slate-600 custom-scrollbar resize-none mb-4"></textarea><button onClick={handleImport} className="w-full p-4 bg-theme-dark text-white rounded-2xl font-bold text-[11px] tracking-widest uppercase shadow-md hover:scale-105 transition-all">Importar Lista</button></div></div>)}
