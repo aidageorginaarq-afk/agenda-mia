@@ -94,34 +94,22 @@
       { id: 'AB4', name: 'Giro Ruso (Russian Twist)', target: 'Abdomen', defaultSeries: 3, defaultReps: 20 }
     ];
 
-    // --- COMPONENTE DE GRÁFICA DE LÍNEA (TIPO CARDIO - INDIVIDUAL) ---
     const LineChart = ({ data, labels, color, maxVal, height = "h-24", unit = "" }) => {
        const max = maxVal || Math.max(...data, 1);
-       
        const points = data.map((val, idx) => {
           const x = (idx / (Math.max(data.length - 1, 1))) * 100;
           const y = 100 - ((val / max) * 100);
           return `${x},${y}`;
        }).join(" ");
-
        return (
           <div className={`w-full ${height} flex flex-col`}>
              <div className="flex-1 relative w-full pt-3 pb-3 px-2">
                 <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
-                   <polyline 
-                     points={points} fill="none" stroke={color} strokeWidth="2.5" 
-                     vectorEffect="nonScalingStroke" strokeLinecap="round" strokeLinejoin="round" 
-                     className="drop-shadow-sm"
-                   />
+                   <polyline points={points} fill="none" stroke={color} strokeWidth="2.5" vectorEffect="nonScalingStroke" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-sm" />
                    {data.map((val, idx) => {
                       const x = (idx / (Math.max(data.length - 1, 1))) * 100;
                       const y = 100 - ((val / max) * 100);
-                      return (
-                         <circle key={idx} cx={x} cy={y} r="4" fill="white" stroke={color} strokeWidth="2" 
-                           vectorEffect="nonScalingStroke" className="transition-all hover:r-[6px] cursor-pointer shadow-sm">
-                           <title>{labels[idx]}: {val} {unit}</title>
-                         </circle>
-                      )
+                      return (<circle key={idx} cx={x} cy={y} r="4" fill="white" stroke={color} strokeWidth="2" vectorEffect="nonScalingStroke" className="transition-all hover:r-[6px] cursor-pointer shadow-sm"><title>{labels[idx]}: {val} {unit}</title></circle>)
                    })}
                 </svg>
              </div>
@@ -137,7 +125,6 @@
        );
     };
 
-    // --- NUEVO COMPONENTE: MULTI-LINE CHART ESTILO BUJO ---
     const MultiLineChart = ({ datasets, labels, height = "h-48" }) => {
        return (
           <div className={`w-full ${height} flex flex-col`}>
@@ -161,7 +148,6 @@
                          const y = clampedY + offset;
                          return `${x},${y}`;
                       }).join(" ");
-
                       return (
                          <g key={dsIdx}>
                             <polyline points={points} fill="none" stroke={ds.color} strokeWidth="3" vectorEffect="nonScalingStroke" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" className="drop-shadow-md" />
@@ -170,11 +156,7 @@
                                const baseY = 100 - (val * 100);
                                const clampedY = Math.max(5, Math.min(95, baseY));
                                const y = clampedY + offset;
-                               return (
-                                  <circle key={idx} cx={x} cy={y} r="5" fill="white" stroke={ds.color} strokeWidth="2.5" vectorEffect="nonScalingStroke" className="transition-all hover:r-[7px] cursor-pointer shadow-sm">
-                                    <title>{ds.label}: {val ? 'Completado' : 'Pendiente'}</title>
-                                  </circle>
-                               )
+                               return (<circle key={idx} cx={x} cy={y} r="5" fill="white" stroke={ds.color} strokeWidth="2.5" vectorEffect="nonScalingStroke" className="transition-all hover:r-[7px] cursor-pointer shadow-sm"><title>{ds.label}: {val ? 'Completado' : 'Pendiente'}</title></circle>)
                             })}
                          </g>
                       );
@@ -202,19 +184,18 @@
       
       const [showResetModal, setShowResetModal] = useState(false);
       const [showFactoryResetModal, setShowFactoryResetModal] = useState(false);
-      const [showResetFinanceModal, setShowResetFinanceModal] = useState(false); // Modal para reset de finanzas
+      const [showResetFinanceModal, setShowResetFinanceModal] = useState(false); 
       const [toastMsg, setToastMsg] = useState(null);
       const [currentCalMonth, setCurrentCalMonth] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
       const [showEventModal, setShowEventModal] = useState({ show: false, date: null, text: '' });
       const [scheduleModal, setScheduleModal] = useState({ show: false, itemType: null, itemId: null, itemName: '', date: selectedDate });
       
       const [showExpenseModal, setShowExpenseModal] = useState(false);
-      const [showAbonoModal, setShowAbonoModal] = useState(false); // Modal para Abonos
+      const [showAbonoModal, setShowAbonoModal] = useState(false); 
       const [showFixedModal, setShowFixedModal] = useState(false);
       const [showGymModal, setShowGymModal] = useState(false);
       const [showGroupModal, setShowGroupModal] = useState(false); 
       const [customExName, setCustomExName] = useState(''); 
-      
       const [showImportModal, setShowImportModal] = useState(false);
       const [importType, setImportType] = useState('topics'); 
       const [importText, setImportText] = useState("");
@@ -225,7 +206,7 @@
 
       // Formularios
       const [expForm, setExpForm] = useState({ amount: '', concept: '', accountId: '' });
-      const [abonoForm, setAbonoForm] = useState({ amount: '', accountId: '' }); // Form de abono
+      const [abonoForm, setAbonoForm] = useState({ amount: '', accountId: '' }); 
       const [fixForm, setFixForm] = useState({ name: '', amount: '', current: '', total: '', accountId: '' });
       const [accForm, setAccForm] = useState({ name: '', cut: '', pay: '' });
       const [groupForm, setGroupForm] = useState({ name: '', subj: '', schedule: [] });
@@ -234,7 +215,7 @@
       
       const [chartRange, setChartRange] = useState('week'); 
 
-      // --- PERSISTENCIA BLINDADA ---
+      // --- PERSISTENCIA BLINDADA V25 ---
       const [groups, setGroups] = useState(() => {
         const saved = localStorage.getItem('bitacora_grupos_v23') || localStorage.getItem('bitacora_grupos_v22') || localStorage.getItem('bitacora_grupos_v21') || localStorage.getItem('bitacora_grupos_v20') || localStorage.getItem('bitacora_grupos_v19');
         if (saved) {
@@ -268,32 +249,17 @@
                  transactions: Array.isArray(parsed.finance?.transactions) ? parsed.finance.transactions : [], 
                  fixedPayments: Array.isArray(parsed.finance?.fixedPayments) ? parsed.finance.fixedPayments : [] 
               };
-              if (!safeFinance.accounts.some(a => a?.name?.includes('Efectivo'))) { 
-                 safeFinance.accounts.push({ id: 'A2', name: 'Efectivo (Billetera)', type: 'Efectivo', cutDate: '-', payDate: '-' }); 
-              }
-              
+              if (!safeFinance.accounts.some(a => a?.name?.includes('Efectivo'))) { safeFinance.accounts.push({ id: 'A2', name: 'Efectivo (Billetera)', type: 'Efectivo', cutDate: '-', payDate: '-' }); }
               const safeTasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
               const safeQuotes = Array.isArray(parsed.quotes) && parsed.quotes.length > 0 ? parsed.quotes : baseData.quotes;
 
               return { 
-                ...baseData, 
-                ...parsed, 
-                finance: safeFinance, 
-                appTitle: parsed.appTitle || 'Agenda - Bitácora',
-                waterLogs: parsed.waterLogs || {}, 
-                sleepLogs: parsed.sleepLogs || {}, 
-                stepsLogs: parsed.stepsLogs || {}, 
-                savingsLogs: parsed.savingsLogs || {},
-                health: parsed.health || { meals: {}, workouts: {} }, 
-                tasks: safeTasks,
-                moodLogs: parsed.moodLogs || {},
-                habitMatrix: parsed.habitMatrix || {},
-                quotes: safeQuotes,
-                calendarEvents: parsed.calendarEvents || {}
+                ...baseData, ...parsed, finance: safeFinance, appTitle: parsed.appTitle || 'Agenda - Bitácora',
+                waterLogs: parsed.waterLogs || {}, sleepLogs: parsed.sleepLogs || {}, stepsLogs: parsed.stepsLogs || {}, savingsLogs: parsed.savingsLogs || {},
+                health: parsed.health || { meals: {}, workouts: {} }, tasks: safeTasks, moodLogs: parsed.moodLogs || {},
+                habitMatrix: parsed.habitMatrix || {}, quotes: safeQuotes, calendarEvents: parsed.calendarEvents || {}
               };
-           } catch(e) {
-              return baseData;
-           }
+           } catch(e) { return baseData; }
         }
         return baseData;
       });
@@ -310,32 +276,20 @@
       const getDaysArray = (numDays) => {
          const arr = [];
          const today = new Date(selectedDate + 'T12:00:00');
-         for (let i = numDays - 1; i >= 0; i--) {
-            const d = new Date(today);
-            d.setDate(today.getDate() - i);
-            arr.push(d.toISOString().split('T')[0]);
-         }
+         for (let i = numDays - 1; i >= 0; i--) { const d = new Date(today); d.setDate(today.getDate() - i); arr.push(d.toISOString().split('T')[0]); }
          return arr;
       };
 
-      const chartDays = useMemo(() => {
-         return chartRange === 'week' ? getDaysArray(7) : getDaysArray(30);
-      }, [selectedDate, chartRange]);
+      const chartDays = useMemo(() => { return chartRange === 'week' ? getDaysArray(7) : getDaysArray(30); }, [selectedDate, chartRange]);
 
-      const currentDayName = useMemo(() => {
-         const d = new Date(selectedDate + 'T12:00:00');
-         return DAYS_OF_WEEK[d.getDay()];
-      }, [selectedDate]);
+      const currentDayName = useMemo(() => { return DAYS_OF_WEEK[new Date(selectedDate + 'T12:00:00').getDay()]; }, [selectedDate]);
 
       const weekDays = useMemo(() => {
         const dt = new Date(selectedDate + 'T12:00:00');
         const day = dt.getDay();
         const diff = dt.getDate() - day + (day === 0 ? -6 : 1);
         const monday = new Date(dt.setDate(diff));
-        return Array.from({length: 7}, (_, i) => {
-          const d = new Date(monday); d.setDate(monday.getDate() + i);
-          return d.toISOString().split('T')[0];
-        });
+        return Array.from({length: 7}, (_, i) => { const d = new Date(monday); d.setDate(monday.getDate() + i); return d.toISOString().split('T')[0]; });
       }, [selectedDate]);
 
       const groupsToday = useMemo(() => {
@@ -345,14 +299,16 @@
             return hasSessionToday || isScheduledForToday;
          }).map(g => {
             const scheduledTime = g.schedule?.find(s => s.day === currentDayName)?.time;
-            const todayTime = scheduledTime || g.time || '08:00'; 
-            return { ...g, todayTime };
+            return { ...g, todayTime: scheduledTime || g.time || '08:00' };
          }).sort((a,b) => a.todayTime.localeCompare(b.todayTime));
       }, [groups, selectedDate, currentDayName]);
 
+      // NUEVO: Pendientes Globales consolida tareas de grupos Y tareas personales (Bujo)
       const globalPendingTasks = useMemo(() => {
-        return groups.flatMap(g => (g.tasks || []).filter(t => !t.done).map(t => ({ ...t, groupName: g.name, color: g.color, groupId: g.id })));
-      }, [groups]);
+        const gTasks = groups.flatMap(g => (g.tasks || []).filter(t => !t.done).map(t => ({ ...t, groupName: g.name, color: g.color, groupId: g.id, isGroup: true })));
+        const pTasks = (personalData.tasks || []).filter(t => !t.done).map(t => ({ ...t, groupName: 'Personal', color: '#34d399', isGroup: false }));
+        return [...gTasks, ...pTasks].sort((a,b) => b.id - a.id);
+      }, [groups, personalData.tasks]);
 
       const formatSchedule = (scheduleArr) => {
          if(!scheduleArr || scheduleArr.length === 0) return 'Sin horario programado';
@@ -363,8 +319,7 @@
          if(!start || !end) return 0;
          const [sh, sm] = start.split(':').map(Number);
          const [eh, em] = end.split(':').map(Number);
-         let hours = eh - sh;
-         let mins = em - sm;
+         let hours = eh - sh; let mins = em - sm;
          if (hours < 0) hours += 24;
          if (mins < 0) { mins += 60; hours -= 1; }
          return Number((hours + (mins / 60)).toFixed(1));
@@ -373,12 +328,10 @@
       const handleSleepChange = (type, val) => {
          setPersonalData(p => {
             const newSleep = { ...(p.sleep||{}), [type]: val };
-            const hrs = calculateSleepHours(newSleep.start, newSleep.end);
-            return { ...p, sleep: newSleep, sleepLogs: { ...(p.sleepLogs || {}), [selectedDate]: hrs } };
+            return { ...p, sleep: newSleep, sleepLogs: { ...(p.sleepLogs || {}), [selectedDate]: calculateSleepHours(newSleep.start, newSleep.end) } };
          });
       };
 
-      // --- ACCIONES SALUD & GYM ---
       const setMeal = (type, value) => { setPersonalData(prev => ({ ...prev, health: { ...prev.health, meals: { ...(prev.health?.meals || {}), [selectedDate]: { ...((prev.health?.meals || {})[selectedDate] || {}), [type]: value } } } })); };
       const setWorkoutGeneral = (field, value) => { setPersonalData(prev => ({ ...prev, health: { ...prev.health, workouts: { ...(prev.health?.workouts || {}), [selectedDate]: { ...((prev.health?.workouts || {})[selectedDate] || { exercises: [] }), [field]: value } } } })); };
       const loadRoutine = (target) => { const routineExercises = GYM_CATALOG.filter(e => e.target === target).map(e => ({ id: Date.now() + Math.random(), name: e.name, series: e.defaultSeries, reps: e.defaultReps, weight: 0, done: false })); setPersonalData(prev => { const currentDay = (prev.health?.workouts || {})[selectedDate] || { exercises: [] }; return { ...prev, health: { ...prev.health, workouts: { ...(prev.health?.workouts || {}), [selectedDate]: { ...currentDay, type: target, exercises: [...currentDay.exercises, ...routineExercises] } } } }; }); showToast(`Rutina de ${target} cargada`); };
@@ -387,7 +340,6 @@
       const currentMeals = (personalData.health?.meals || {})[selectedDate] || { desayuno: '', comida: '', cena: '', snacks: '' };
       const currentWorkout = (personalData.health?.workouts || {})[selectedDate] || { type: '', duration: '', energy: 0, exercises: [] };
 
-      // --- ACCIONES GENERALES ---
       const showToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 3000); };
       
       const addSession = (type, contentId, dateStr, groupIdToUse) => {
@@ -407,7 +359,6 @@
          setGroups(prev => prev.map(g => g.id === activeGroupId ? { ...g, sessions: (g.sessions||[]).map(s => s.id === sessionId ? { ...s, notes } : s) } : g));
       };
 
-      // --- GESTIÓN DE GRUPOS ---
       const toggleGroupFormDay = (dayName) => { setGroupForm(prev => { const currentSchedule = prev.schedule || []; const exists = currentSchedule.find(s => s.day === dayName); if(exists) { return { ...prev, schedule: currentSchedule.filter(s => s.day !== dayName) }; } return { ...prev, schedule: [...currentSchedule, { day: dayName, time: '08:00' }] }; }); };
       const updateGroupFormTime = (dayName, newTime) => { setGroupForm(prev => ({ ...prev, schedule: (prev.schedule||[]).map(s => s.day === dayName ? { ...s, time: newTime } : s) })); };
       const toggleEditingGroupDay = (dayName) => { setEditingGroup(prev => { const currentSchedule = prev.schedule || []; const exists = currentSchedule.find(s => s.day === dayName); if(exists) { return { ...prev, schedule: currentSchedule.filter(s => s.day !== dayName) }; } return { ...prev, schedule: [...currentSchedule, { day: dayName, time: '08:00' }] }; }); };
@@ -426,9 +377,7 @@
          const lines = importText.split('\n').filter(l => l.trim() !== '');
          const newItems = lines.map((l, i) => ({ id: Date.now() + i, title: l.trim(), completed: false }));
          setGroups(prev => prev.map(g => g.id === activeGroupId ? { ...g, [importType]: [...(g[importType]||[]), ...newItems] } : g));
-         setImportText("");
-         setShowImportModal(false);
-         showToast(`${lines.length} elementos importados`);
+         setImportText(""); setShowImportModal(false); showToast(`${lines.length} elementos importados`);
       };
 
       const handleSmartSync = (e, type) => {
@@ -440,73 +389,37 @@
                const data = JSON.parse(re.target.result);
                if (type === 'gym') {
                   if (data.personalData) {
-                     setPersonalData(prev => ({
-                        ...prev,
-                        health: {
-                           ...prev.health,
-                           workouts: { ...(prev.health?.workouts || {}), ...(data.personalData.health?.workouts || {}) },
-                           meals: { ...(prev.health?.meals || {}), ...(data.personalData.health?.meals || {}) }
-                        },
-                        waterLogs: { ...(prev.waterLogs || {}), ...(data.personalData.waterLogs || {}) },
-                        sleepLogs: { ...(prev.sleepLogs || {}), ...(data.personalData.sleepLogs || {}) },
-                        stepsLogs: { ...(prev.stepsLogs || {}), ...(data.personalData.stepsLogs || {}) }
-                     }));
+                     setPersonalData(prev => ({ ...prev, health: { ...prev.health, workouts: { ...(prev.health?.workouts || {}), ...(data.personalData.health?.workouts || {}) }, meals: { ...(prev.health?.meals || {}), ...(data.personalData.health?.meals || {}) } }, waterLogs: { ...(prev.waterLogs || {}), ...(data.personalData.waterLogs || {}) }, sleepLogs: { ...(prev.sleepLogs || {}), ...(data.personalData.sleepLogs || {}) }, stepsLogs: { ...(prev.stepsLogs || {}), ...(data.personalData.stepsLogs || {}) } }));
                      showToast("💪 ¡Datos de Salud sincronizados!");
                   } else showToast("El archivo no tiene datos de Salud.");
                } else if (type === 'classes') {
-                  if (data.groups) {
-                     setGroups(data.groups);
-                     showToast("📚 ¡Grupos y Clases sincronizadas!");
-                  } else showToast("El archivo no tiene datos de Clases.");
+                  if (data.groups) { setGroups(data.groups); showToast("📚 ¡Grupos y Clases sincronizadas!"); } else showToast("El archivo no tiene datos de Clases.");
                } else if (type === 'bujo') {
                   if (data.personalData) {
-                     setPersonalData(prev => ({
-                        ...prev,
-                        tasks: data.personalData.tasks || prev.tasks,
-                        habitMatrix: data.personalData.habitMatrix || prev.habitMatrix,
-                        moodLogs: { ...(prev.moodLogs || {}), ...(data.personalData.moodLogs || {}) },
-                        savingsLogs: { ...(prev.savingsLogs || {}), ...(data.personalData.savingsLogs || {}) },
-                        quotes: data.personalData.quotes || prev.quotes
-                     }));
+                     setPersonalData(prev => ({ ...prev, tasks: data.personalData.tasks || prev.tasks, habitMatrix: data.personalData.habitMatrix || prev.habitMatrix, moodLogs: { ...(prev.moodLogs || {}), ...(data.personalData.moodLogs || {}) }, savingsLogs: { ...(prev.savingsLogs || {}), ...(data.personalData.savingsLogs || {}) }, quotes: data.personalData.quotes || prev.quotes }));
                      showToast("📔 ¡Diario Bujo sincronizado!");
                   } else showToast("El archivo no tiene datos de Bujo.");
                } else if (type === 'finance') {
                   if (data.personalData && data.personalData.finance) {
-                     setPersonalData(prev => ({
-                        ...prev,
-                        finance: data.personalData.finance
-                     }));
+                     setPersonalData(prev => ({ ...prev, finance: data.personalData.finance }));
                      showToast("💳 ¡Cartera sincronizada!");
                   } else showToast("El archivo no tiene datos de Cartera.");
                }
             } catch (err) { alert("Archivo no válido."); }
          };
-         reader.readAsText(file);
-         e.target.value = ''; 
+         reader.readAsText(file); e.target.value = ''; 
       };
 
       const handleSmartExport = (type) => {
          let exportData = {};
          let fileName = `Bitacora_${type}_${new Date().toLocaleDateString()}.json`;
-
-         if (type === 'all') {
-            exportData = { groups, personalData };
-            fileName = `Respaldo_Completo_${new Date().toLocaleDateString()}.json`;
-         } else if (type === 'classes') {
-            exportData = { groups };
-         } else if (type === 'gym') {
-            exportData = { personalData: { health: personalData.health, waterLogs: personalData.waterLogs, sleepLogs: personalData.sleepLogs, stepsLogs: personalData.stepsLogs } };
-         } else if (type === 'bujo') {
-            exportData = { personalData: { tasks: personalData.tasks, habitMatrix: personalData.habitMatrix, moodLogs: personalData.moodLogs, savingsLogs: personalData.savingsLogs, quotes: personalData.quotes } };
-         } else if (type === 'finance') {
-            exportData = { personalData: { finance: personalData.finance } };
-         }
-
+         if (type === 'all') { exportData = { groups, personalData }; fileName = `Respaldo_Completo_${new Date().toLocaleDateString()}.json`;
+         } else if (type === 'classes') { exportData = { groups };
+         } else if (type === 'gym') { exportData = { personalData: { health: personalData.health, waterLogs: personalData.waterLogs, sleepLogs: personalData.sleepLogs, stepsLogs: personalData.stepsLogs } };
+         } else if (type === 'bujo') { exportData = { personalData: { tasks: personalData.tasks, habitMatrix: personalData.habitMatrix, moodLogs: personalData.moodLogs, savingsLogs: personalData.savingsLogs, quotes: personalData.quotes } };
+         } else if (type === 'finance') { exportData = { personalData: { finance: personalData.finance } }; }
          const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-         const url = URL.createObjectURL(blob);
-         const a = document.createElement('a'); 
-         a.href = url; a.download = fileName; a.click();
-         showToast(`¡Descarga lista!`);
+         const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = fileName; a.click(); showToast(`¡Descarga lista!`);
       };
 
       const handleExportBujo = () => {
@@ -514,34 +427,17 @@
          Object.values(personalData.habitMatrix || {}).forEach(h => Object.keys(h).forEach(d => dates.add(d)));
          const sortedDates = Array.from(dates).sort();
          const habits = Object.keys(personalData.habitMatrix || {});
-         
-         let csv = "Fecha,Agua(Vasos),Sueno(Hrs),Pasos,Humor(1-5),Ahorro($)";
-         habits.forEach(h => csv += "," + h);
-         csv += "\n";
-         
+         let csv = "Fecha,Agua(Vasos),Sueno(Hrs),Pasos,Humor(1-5),Ahorro($)"; habits.forEach(h => csv += "," + h); csv += "\n";
          sortedDates.forEach(d => {
-            const row = [
-               d,
-               (personalData.waterLogs || {})[d] || 0,
-               (personalData.sleepLogs || {})[d] || 0,
-               (personalData.stepsLogs || {})[d] || 0,
-               (personalData.moodLogs || {})[d] || 0,
-               (personalData.savingsLogs || {})[d] || 0
-            ];
-            habits.forEach(h => row.push((personalData.habitMatrix[h] || {})[d] ? 1 : 0));
-            csv += row.join(",") + "\n";
+            const row = [ d, (personalData.waterLogs || {})[d] || 0, (personalData.sleepLogs || {})[d] || 0, (personalData.stepsLogs || {})[d] || 0, (personalData.moodLogs || {})[d] || 0, (personalData.savingsLogs || {})[d] || 0 ];
+            habits.forEach(h => row.push((personalData.habitMatrix[h] || {})[d] ? 1 : 0)); csv += row.join(",") + "\n";
          });
-
-         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-         const url = URL.createObjectURL(blob);
-         const link = document.createElement("a");
-         link.href = url; link.download = `Bujo_Estadisticas_${new Date().toLocaleDateString()}.csv`;
-         link.click();
+         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob);
+         const link = document.createElement("a"); link.href = url; link.download = `Bujo_Estadisticas_${new Date().toLocaleDateString()}.csv`; link.click();
       };
 
       const handleFactoryReset = () => { localStorage.clear(); setGroups([{ id: 'G1', name: 'Nuevo Grupo', subject: 'Materia...', color: '#BE95C4', schedule:[], topics: [], adas: [], sessions: [], tasks: [] }]); setPersonalData({ appTitle: 'Agenda - Bitácora', theme: 'jacaranda', habits: { exercise: false }, waterLogs: {}, sleepLogs: {}, stepsLogs: {}, savingsLogs: {}, sleep: { start: '22:00', end: '06:00' }, tasks: [], quotes: ["La arquitectura es música congelada."], activeQuoteIndex: 0, habitMatrix: {}, moodLogs: {}, calendarEvents: {}, finance: { accounts: [], transactions: [], fixedPayments: [] }, health: { meals: {}, workouts: {} } }); setCoverImage(null); setShowFactoryResetModal(false); setActiveGroupId('G1'); setViewMode('welcome'); showToast("¡Reseteo exitoso!"); };
       
-      // FINANZAS
       const formatMoney = (n) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n);
       
       const addTransaction = (amount, concept, accountId) => { 
@@ -567,7 +463,8 @@
             ...prev,
             finance: {
                ...prev.finance,
-               transactions: []
+               transactions: [], // Borra variables
+               accounts: (prev.finance?.accounts || []).map(a => ({ ...a, paid: false })) // Quita las palomitas
             }
          }));
          setShowResetFinanceModal(false);
@@ -581,12 +478,7 @@
       const accountSummaries = useMemo(() => { return (personalData.finance?.accounts || []).map(acc => { const variableTotal = (personalData.finance?.transactions || []).filter(t => t.accountId === acc.id).reduce((sum, t) => sum + t.amount, 0); const fixedTotal = (personalData.finance?.fixedPayments || []).filter(f => f.accountId === acc.id).reduce((sum, f) => sum + f.amount, 0); return { ...acc, variableTotal, fixedTotal, total: variableTotal + fixedTotal }; }); }, [personalData.finance]);
       const grandTotal = accountSummaries.reduce((sum, acc) => sum + acc.total, 0);
 
-      // TRACKERS BUJO
-      const toggleMatrixHabit = (habitName, date) => setPersonalData(prev => { 
-         const currentMatrix = prev.habitMatrix || {};
-         const currentHabitObj = currentMatrix[habitName] || {};
-         return { ...prev, habitMatrix: { ...currentMatrix, [habitName]: { ...currentHabitObj, [date]: !currentHabitObj[date] } } }; 
-      });
+      const toggleMatrixHabit = (habitName, date) => setPersonalData(prev => { const currentMatrix = prev.habitMatrix || {}; const currentHabitObj = currentMatrix[habitName] || {}; return { ...prev, habitMatrix: { ...currentMatrix, [habitName]: { ...currentHabitObj, [date]: !currentHabitObj[date] } } }; });
       const addNewMatrixHabit = (habitName) => { if(habitName) { setPersonalData(prev => ({ ...prev, habitMatrix: { ...(prev.habitMatrix || {}), [habitName]: {} } })); showToast("Hábito añadido"); } };
       const setMood = (date, score) => setPersonalData(prev => ({ ...prev, moodLogs: { ...(prev.moodLogs || {}), [date]: score } }));
       const saveCalendarEvent = () => { if(showEventModal.date && showEventModal.text !== null) { setPersonalData(prev => ({ ...prev, calendarEvents: { ...(prev.calendarEvents || {}), [showEventModal.date]: showEventModal.text } })); } setShowEventModal({ show: false, date: null, text: '' }); };
@@ -596,7 +488,6 @@
       const safeQuotesList = Array.isArray(personalData.quotes) && personalData.quotes.length > 0 ? personalData.quotes : ["La arquitectura es música congelada."];
       const safeTasksList = Array.isArray(personalData.tasks) ? personalData.tasks : [];
 
-      // --- VISTAS ---
       const WelcomeCover = () => {
          const currentQuoteIndex = (personalData.activeQuoteIndex || 0) < safeQuotesList.length ? (personalData.activeQuoteIndex || 0) : 0;
          return (
@@ -747,7 +638,7 @@
                                   <div className="flex justify-between items-center mb-4">
                                      <span className="text-[10px] font-bold text-theme-main italic uppercase flex items-center gap-2">
                                         {s.date} 
-                                        {/* NUEVO BOTON BORRAR SESIÓN */}
+                                        {/* BOTON BORRAR SESIÓN */}
                                         <button onClick={() => deleteSession(activeGroupId, s.id)} className="opacity-0 group-hover/sess:opacity-100 text-red-300 hover:text-red-500 transition-opacity" title="Eliminar sesión"><Trash2 size={12}/></button>
                                      </span>
                                      <span className="text-[8px] px-2 py-0.5 rounded-full font-bold uppercase bg-white shadow-sm text-slate-500">{s.type}</span>
@@ -809,6 +700,11 @@
                                 </div>
                               );
                             }) : (<div className="p-4 border-2 border-dashed border-theme-surface rounded-2xl flex flex-col items-center justify-center text-slate-400 bg-slate-50/30"><CalendarClock size={24} className="mb-2 opacity-50 text-theme-main" /><p className="text-[11px] uppercase tracking-widest font-bold mb-1">Clase sin planear</p><p className="text-xs italic">Abre el grupo en el menú para programarle un tema o ADA hoy.</p></div>)}
+                            
+                            {/* NUEVO: Input para tarea de grupo */}
+                            <div className="mt-3 relative">
+                               <input type="text" placeholder={`+ Tarea/Pendiente para ${g.name}...`} className="w-full bg-slate-50/80 p-3 rounded-2xl text-xs focus:outline-none focus:ring-1 focus:ring-theme-main text-slate-600 italic border border-white shadow-sm" onKeyDown={(e) => { if(e.key === 'Enter' && e.target.value.trim()) { setGroups(prev => prev.map(group => group.id === g.id ? { ...group, tasks: [...(group.tasks||[]), {id: Date.now(), text: e.target.value.trim(), done: false}] } : group)); e.target.value = ''; showToast("Tarea agregada"); } }} />
+                            </div>
                           </div>
                         </div>
                       );
@@ -817,19 +713,30 @@
                       <div className="col-span-full py-16 flex flex-col items-center text-center text-slate-300"><CalendarDays size={60} className="opacity-20 mb-4 text-theme-main"/><p className="italic text-sm text-slate-500 font-bold mb-1">No tienes grupos asignados para los {currentDayName}s.</p><p className="text-xs uppercase tracking-widest text-slate-400">Ni sesiones extras programadas hoy.</p></div>
                     )}
                   </div>
-                  <div className="bg-white p-8 rounded-[4rem] border border-theme-surface shadow-xl h-fit">
-                    <h3 className="font-serif font-bold text-2xl text-theme-dark italic mb-6">Pendientes Globales</h3>
-                    <div className="space-y-4">
+                  <div className="bg-white p-8 rounded-[4rem] border border-theme-surface shadow-xl h-fit flex flex-col">
+                    <h3 className="font-serif font-bold text-2xl text-theme-dark italic mb-6">Pendientes y Notas</h3>
+                    <div className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2 max-h-[500px]">
                       {globalPendingTasks.map(t => (
-                        <div key={`${t.groupId}-${t.id}`} onClick={() => toggleGroupTask(t.id, t.groupId)} className="p-4 bg-theme-surface/50 rounded-3xl border border-white shadow-sm flex items-start gap-3 cursor-pointer hover:bg-theme-surface transition-all"><div className="w-1.5 h-6 rounded-full shrink-0" style={{backgroundColor:t.color}}></div><div><p className="text-xs font-bold text-slate-700 leading-snug mb-1">{t.text}</p><p className="text-[9px] uppercase tracking-widest text-theme-main font-bold opacity-60">{t.groupName}</p></div></div>
+                        <div key={t.isGroup ? `${t.groupId}-${t.id}` : `pers-${t.id}`} onClick={() => t.isGroup ? toggleGroupTask(t.id, t.groupId) : setPersonalData(p => ({...p, tasks: p.tasks.map(x => x.id === t.id ? {...x, done: !x.done} : x)})) } className="p-4 bg-theme-surface/50 rounded-3xl border border-white shadow-sm flex items-start gap-3 cursor-pointer hover:bg-theme-surface transition-all">
+                           <div className="w-1.5 h-6 rounded-full shrink-0" style={{backgroundColor:t.color}}></div>
+                           <div>
+                              <p className="text-xs font-bold text-slate-700 leading-snug mb-1">{t.text}</p>
+                              <p className="text-[9px] uppercase tracking-widest text-theme-main font-bold opacity-60" style={{color:t.color}}>{t.groupName}</p>
+                           </div>
+                        </div>
                       ))}
                       {globalPendingTasks.length === 0 && <p className="text-center text-xs italic text-slate-400 py-10">Todo al día ✨</p>}
+                    </div>
+                    {/* NUEVO: Input para pendientes personales globales */}
+                    <div className="mt-4 border-t border-slate-50 pt-4">
+                       <input type="text" placeholder="+ Nuevo pendiente personal..." className="w-full p-4 bg-slate-50 rounded-[2rem] text-sm focus:outline-none italic transition-all shadow-inner border border-transparent focus:border-theme-main text-slate-600" onKeyDown={(e) => { if(e.key === 'Enter' && e.target.value.trim()) { setPersonalData(p => ({...p, tasks: [...(p.tasks||[]), {id: Date.now(), text: e.target.value.trim(), done: false}]})); e.target.value = ''; showToast("Nota personal guardada"); } }} />
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
+            {/* LA NUEVA VISTA BUJO */}
             {viewMode === 'bujo' && (
               <div className="flex-1 p-10 overflow-y-auto max-w-7xl mx-auto w-full custom-scrollbar">
                 <header className="mb-10 flex justify-between items-end border-b border-theme-surface pb-8">
@@ -846,6 +753,7 @@
                   </div>
                 </header>
 
+                {/* TRACKERS GRÁFICOS (LÍNEAS CARDIO) */}
                 <section className="bg-white p-8 rounded-[3.5rem] border border-theme-surface shadow-lg mb-8 relative overflow-hidden">
                    <h3 className="text-xs font-bold uppercase text-theme-dark mb-6 tracking-[0.3em] flex items-center gap-3 italic"><TrendingUp size={18} /> Resumen {chartRange === 'week' ? 'Semanal' : 'Mensual'}</h3>
                    <div className="flex gap-6 overflow-x-auto custom-scrollbar pb-4">
@@ -1010,7 +918,7 @@
                           {safeTasksList.length === 0 && <p className="text-center text-xs text-slate-400 italic py-10">Agrega una nueva nota.</p>}
                        </div>
                        <div className="mt-4">
-                          <input type="text" placeholder="+ Nueva nota..." className="w-full p-4 bg-white rounded-[2rem] text-sm focus:outline-none italic transition-all shadow-sm border border-transparent focus:border-theme-main text-slate-600" onKeyDown={(e) => { if(e.key === 'Enter' && e.target.value.trim()) { setPersonalData(p => ({...p, tasks: [...safeTasksList, {id: Date.now(), text: e.target.value.trim(), done: false}]})); e.target.value = ''; } }} />
+                          <input type="text" placeholder="+ Nueva nota..." className="w-full p-4 bg-white rounded-[2rem] text-sm focus:outline-none italic transition-all shadow-sm border border-transparent focus:border-theme-main text-slate-600" onKeyDown={(e) => { if(e.key === 'Enter' && e.target.value.trim()) { setPersonalData(p => ({...p, tasks: [...(p.tasks||[]), {id: Date.now(), text: e.target.value.trim(), done: false}]})); e.target.value = ''; } }} />
                        </div>
                     </section>
                 </div>
@@ -1305,7 +1213,7 @@
             )}
           </main>
 
-          {/* MODALES FLOTANTES EN RAÍZ */}
+          {/* MODALES FLOTANTES */}
           {showGymModal && (
             <div className="fixed inset-0 z-[90] bg-slate-900/80 backdrop-blur-md flex items-end md:items-center justify-center animate-in slide-in-from-bottom duration-300">
                <div className="bg-[#FCF8FF] w-full max-w-lg h-[90vh] md:h-[85vh] rounded-t-[3rem] md:rounded-[3rem] shadow-2xl flex flex-col overflow-hidden relative">
@@ -1434,3 +1342,4 @@
   </script>
 </body>
 </html>
+```eof
