@@ -190,7 +190,6 @@
       const [showEventModal, setShowEventModal] = useState({ show: false, date: null, text: '' });
       const [scheduleModal, setScheduleModal] = useState({ show: false, itemType: null, itemId: null, itemName: '', date: selectedDate });
       
-      // V27: NUEVO MODAL DE REPROGRAMACIÓN
       const [rescheduleModal, setRescheduleModal] = useState({ show: false, groupId: null, sessionId: null, newDate: '' });
 
       const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -218,13 +217,12 @@
       const [newDailyNote, setNewDailyNote] = useState('');
       const [newBujoNote, setNewBujoNote] = useState('');
       
-      // V27: ESTADO PARA PRIORIDAD DE TAREAS (EISENHOWER)
       const [taskPriority, setTaskPriority] = useState('normal'); 
-
       const [chartRange, setChartRange] = useState('week'); 
-
-      // V27: ESTADO PARA POMODORO
       const [pomo, setPomo] = useState({ time: 25 * 60, active: false, type: 'work' });
+
+      // V28: ESTADO PARA LA LIBRETA DE NOTAS
+      const [activeNoteId, setActiveNoteId] = useState(null);
 
       useEffect(() => {
         let interval;
@@ -260,7 +258,7 @@
           appTitle: 'Agenda - Bitácora', theme: 'jacaranda', 
           waterLogs: {}, sleepLogs: {}, stepsLogs: {}, savingsLogs: {}, sleep: { start: '22:00', end: '06:00' }, 
           tasks: [], quotes: ["La arquitectura es música congelada."], activeQuoteIndex: 0,
-          habitMatrix: {}, moodLogs: {}, calendarEvents: {},
+          habitMatrix: {}, moodLogs: {}, calendarEvents: {}, notebook: [],
           finance: { accounts: [{ id: 'A1', name: 'Banorte', type: 'Crédito', cutDate: '15', payDate: '05' }, { id: 'A2', name: 'Efectivo (Billetera)', type: 'Efectivo', cutDate: '-', payDate: '-' }], transactions: [], fixedPayments: [] },
           health: { meals: {}, workouts: {} }
         };
@@ -276,12 +274,13 @@
               if (!safeFinance.accounts.some(a => a?.name?.includes('Efectivo'))) { safeFinance.accounts.push({ id: 'A2', name: 'Efectivo (Billetera)', type: 'Efectivo', cutDate: '-', payDate: '-' }); }
               const safeTasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
               const safeQuotes = Array.isArray(parsed.quotes) && parsed.quotes.length > 0 ? parsed.quotes : baseData.quotes;
+              const safeNotebook = Array.isArray(parsed.notebook) ? parsed.notebook : [];
 
               return { 
                 ...baseData, ...parsed, finance: safeFinance, appTitle: parsed.appTitle || 'Agenda - Bitácora',
                 waterLogs: parsed.waterLogs || {}, sleepLogs: parsed.sleepLogs || {}, stepsLogs: parsed.stepsLogs || {}, savingsLogs: parsed.savingsLogs || {},
                 health: parsed.health || { meals: {}, workouts: {} }, tasks: safeTasks, moodLogs: parsed.moodLogs || {},
-                habitMatrix: parsed.habitMatrix || {}, quotes: safeQuotes, calendarEvents: parsed.calendarEvents || {}
+                habitMatrix: parsed.habitMatrix || {}, quotes: safeQuotes, calendarEvents: parsed.calendarEvents || {}, notebook: safeNotebook
               };
            } catch(e) { return baseData; }
         }
@@ -326,7 +325,6 @@
          }).sort((a,b) => a.todayTime.localeCompare(b.todayTime));
       }, [groups, selectedDate, currentDayName]);
 
-      // V27: ORDENAMIENTO POR PRIORIDADES (MATRIZ EISENHOWER)
       const globalPendingTasks = useMemo(() => {
         const gTasks = groups.flatMap(g => (g.tasks || []).filter(t => !t.done).map(t => ({ ...t, groupName: g.name, color: g.color, groupId: g.id, isGroup: true })));
         const pTasks = (personalData.tasks || []).filter(t => !t.done).map(t => ({ ...t, groupName: 'Personal', color: '#34d399', isGroup: false }));
@@ -433,7 +431,7 @@
                   } else showToast("El archivo no tiene datos de Clases.");
                } else if (type === 'bujo') {
                   if (data.personalData) {
-                     setPersonalData(prev => ({ ...prev, tasks: data.personalData.tasks || prev.tasks, habitMatrix: data.personalData.habitMatrix || prev.habitMatrix, moodLogs: { ...(prev.moodLogs || {}), ...(data.personalData.moodLogs || {}) }, savingsLogs: { ...(prev.savingsLogs || {}), ...(data.personalData.savingsLogs || {}) }, quotes: data.personalData.quotes || prev.quotes }));
+                     setPersonalData(prev => ({ ...prev, tasks: data.personalData.tasks || prev.tasks, habitMatrix: data.personalData.habitMatrix || prev.habitMatrix, moodLogs: { ...(prev.moodLogs || {}), ...(data.personalData.moodLogs || {}) }, savingsLogs: { ...(prev.savingsLogs || {}), ...(data.personalData.savingsLogs || {}) }, quotes: data.personalData.quotes || prev.quotes, notebook: data.personalData.notebook || prev.notebook }));
                      showToast("📔 ¡Diario Bujo sincronizado!");
                   } else showToast("El archivo no tiene datos de Bujo.");
                } else if (type === 'finance') {
@@ -453,7 +451,7 @@
          if (type === 'all') { exportData = { groups, personalData }; fileName = `Respaldo_Completo_${new Date().toLocaleDateString()}.json`;
          } else if (type === 'classes') { exportData = { groups };
          } else if (type === 'gym') { exportData = { personalData: { health: personalData.health, waterLogs: personalData.waterLogs, sleepLogs: personalData.sleepLogs, stepsLogs: personalData.stepsLogs } };
-         } else if (type === 'bujo') { exportData = { personalData: { tasks: personalData.tasks, habitMatrix: personalData.habitMatrix, moodLogs: personalData.moodLogs, savingsLogs: personalData.savingsLogs, quotes: personalData.quotes } };
+         } else if (type === 'bujo') { exportData = { personalData: { tasks: personalData.tasks, habitMatrix: personalData.habitMatrix, moodLogs: personalData.moodLogs, savingsLogs: personalData.savingsLogs, quotes: personalData.quotes, notebook: personalData.notebook } };
          } else if (type === 'finance') { exportData = { personalData: { finance: personalData.finance } }; }
          const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
          const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = fileName; a.click(); showToast(`¡Descarga lista!`);
@@ -473,7 +471,7 @@
          const link = document.createElement("a"); link.href = url; link.download = `Bujo_Estadisticas_${new Date().toLocaleDateString()}.csv`; link.click();
       };
 
-      const handleFactoryReset = () => { localStorage.clear(); setGroups([{ id: 'G1', name: 'Nuevo Grupo', subject: 'Materia...', color: '#BE95C4', schedule:[], topics: [], adas: [], sessions: [], tasks: [] }]); setPersonalData({ appTitle: 'Agenda - Bitácora', theme: 'jacaranda', habits: { exercise: false }, waterLogs: {}, sleepLogs: {}, stepsLogs: {}, savingsLogs: {}, sleep: { start: '22:00', end: '06:00' }, tasks: [], quotes: ["La arquitectura es música congelada."], activeQuoteIndex: 0, habitMatrix: {}, moodLogs: {}, calendarEvents: {}, finance: { accounts: [], transactions: [], fixedPayments: [] }, health: { meals: {}, workouts: {} } }); setCoverImage(null); setShowFactoryResetModal(false); setActiveGroupId('G1'); setViewMode('welcome'); showToast("¡Reseteo exitoso!"); };
+      const handleFactoryReset = () => { localStorage.clear(); setGroups([{ id: 'G1', name: 'Nuevo Grupo', subject: 'Materia...', color: '#BE95C4', schedule:[], topics: [], adas: [], sessions: [], tasks: [] }]); setPersonalData({ appTitle: 'Agenda - Bitácora', theme: 'jacaranda', habits: { exercise: false }, waterLogs: {}, sleepLogs: {}, stepsLogs: {}, savingsLogs: {}, sleep: { start: '22:00', end: '06:00' }, tasks: [], quotes: ["La arquitectura es música congelada."], activeQuoteIndex: 0, habitMatrix: {}, moodLogs: {}, calendarEvents: {}, notebook: [], finance: { accounts: [], transactions: [], fixedPayments: [] }, health: { meals: {}, workouts: {} } }); setCoverImage(null); setShowFactoryResetModal(false); setActiveGroupId('G1'); setViewMode('welcome'); showToast("¡Reseteo exitoso!"); };
       
       const formatMoney = (n) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n);
       
@@ -513,6 +511,21 @@
 
       const safeQuotesList = Array.isArray(personalData.quotes) && personalData.quotes.length > 0 ? personalData.quotes : ["La arquitectura es música congelada."];
       const safeTasksList = Array.isArray(personalData.tasks) ? personalData.tasks : [];
+
+      // V28: FUNCIONES DE LIBRETA
+      const createNote = () => {
+         const newNote = { id: Date.now(), title: '', content: '', date: new Date().toISOString().split('T')[0] };
+         setPersonalData(p => ({ ...p, notebook: [newNote, ...(p.notebook || [])] }));
+         setActiveNoteId(newNote.id);
+      };
+      const updateNote = (id, field, value) => {
+         setPersonalData(p => ({ ...p, notebook: (p.notebook || []).map(n => n.id === id ? { ...n, [field]: value } : n) }));
+      };
+      const deleteNote = (id) => {
+         setPersonalData(p => ({ ...p, notebook: (p.notebook || []).filter(n => n.id !== id) }));
+         if(activeNoteId === id) setActiveNoteId(null);
+         showToast("Nota eliminada");
+      };
 
       // --- VISTAS ---
       const WelcomeCover = () => {
@@ -566,6 +579,8 @@
               <div className="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar">
                 <button onClick={() => setViewMode('daily')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'daily' ? 'bg-theme-main text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><Calendar size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Hoy</span></button>
                 <button onClick={() => setViewMode('calendar')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'calendar' ? 'bg-theme-accent text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><CalendarDays size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Calendario</span></button>
+                {/* V28: NUEVO BOTÓN PARA LIBRETA */}
+                <button onClick={() => setViewMode('notebook')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'notebook' ? 'bg-amber-400 text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><BookOpen size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Libreta</span></button>
                 <button onClick={() => setViewMode('finance')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'finance' ? 'bg-theme-dark text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><Wallet size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Cartera</span></button>
                 <button onClick={() => setViewMode('bujo')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'bujo' ? 'bg-emerald-500 text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><NotebookPen size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Bujo</span></button>
                 <button onClick={() => setViewMode('health')} className={`w-full flex items-center p-4 rounded-3xl transition-all ${viewMode === 'health' ? 'bg-[#FF9B85] text-white shadow-lg' : 'hover:bg-theme-surface text-slate-500'}`}><HeartPulse size={20} /> <span className="ml-4 font-bold text-xs hidden md:block uppercase tracking-widest">Salud</span></button>
@@ -581,6 +596,62 @@
             {isPrivateMode && viewMode !== 'welcome' && <div className="absolute inset-0 z-40 bg-theme-bg/95 backdrop-blur-2xl flex flex-col items-center justify-center text-theme-main"><Lock size={100} className="mb-8 opacity-10" /><h2 className="text-4xl font-serif font-bold italic tracking-widest uppercase">Modo Privado</h2></div>}
 
             {viewMode === 'welcome' && <WelcomeCover />}
+
+            {/* V28: NUEVA VISTA DE LIBRETA */}
+            {viewMode === 'notebook' && (
+               <div className="flex-1 p-10 overflow-hidden flex flex-col max-w-7xl mx-auto w-full">
+                  <header className="mb-10 flex justify-between items-end border-b border-theme-surface pb-8 shrink-0">
+                     <div>
+                        <p className="text-[12px] font-bold text-amber-500 uppercase tracking-widest mb-2 italic">Mis Apuntes Libres</p>
+                        <h2 className="text-6xl font-serif font-bold text-theme-dark italic tracking-tighter">Libreta</h2>
+                     </div>
+                     <button onClick={createNote} className="flex items-center gap-2 bg-amber-500 text-white px-6 py-3 rounded-full font-bold text-[10px] tracking-widest uppercase shadow-md hover:scale-105 transition-all"><Plus size={16} /> Nueva Nota</button>
+                  </header>
+                  <div className="flex-1 flex gap-8 overflow-hidden">
+                     {/* Lista de notas */}
+                     <div className="w-[30%] bg-white rounded-[3rem] border border-theme-surface shadow-lg flex flex-col overflow-hidden">
+                        <div className="p-6 bg-theme-surface/50 border-b border-theme-surface">
+                           <h3 className="text-xs font-bold text-theme-dark uppercase tracking-widest">Índice</h3>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+                           {(personalData.notebook || []).map(note => (
+                              <div key={note.id} onClick={() => setActiveNoteId(note.id)} className={`p-4 rounded-[2rem] cursor-pointer transition-all flex flex-col gap-1 border ${activeNoteId === note.id ? 'bg-amber-400 text-white shadow-md border-amber-400' : 'bg-slate-50 text-slate-600 hover:bg-theme-surface/50 border-transparent'}`}>
+                                 <p className="font-bold text-sm truncate italic">{note.title || 'Sin título'}</p>
+                                 <p className={`text-[9px] uppercase tracking-widest ${activeNoteId === note.id ? 'text-white/70' : 'text-slate-400'}`}>{note.date}</p>
+                              </div>
+                           ))}
+                           {(!personalData.notebook || personalData.notebook.length === 0) && (
+                              <div className="text-center py-10 opacity-50"><BookOpen size={30} className="mx-auto mb-3 text-theme-main"/><p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">No hay notas</p></div>
+                           )}
+                        </div>
+                     </div>
+                     {/* Editor */}
+                     <div className="flex-1 bg-white rounded-[3rem] border border-theme-surface shadow-lg flex flex-col overflow-hidden relative">
+                        {activeNoteId ? (() => {
+                           const activeNote = (personalData.notebook || []).find(n => n.id === activeNoteId);
+                           if(!activeNote) return null;
+                           return (
+                              <>
+                                 <div className="p-6 bg-theme-surface/30 border-b border-theme-surface flex justify-between items-center shrink-0">
+                                    <input type="text" value={activeNote.title} onChange={(e) => updateNote(activeNote.id, 'title', e.target.value)} className="bg-transparent text-2xl font-serif font-bold italic text-theme-dark focus:outline-none w-[70%]" placeholder="Título de la nota..." />
+                                    <button onClick={() => deleteNote(activeNote.id)} className="p-3 text-red-300 hover:text-red-500 transition-colors bg-white rounded-2xl shadow-sm"><Trash2 size={16}/></button>
+                                 </div>
+                                 <div className="flex-1 relative p-8">
+                                    <textarea value={activeNote.content} onChange={(e) => updateNote(activeNote.id, 'content', e.target.value)} className="w-full h-full bg-transparent resize-none focus:outline-none text-base font-medium italic leading-relaxed text-slate-600 custom-scrollbar z-10 relative" placeholder="Empieza a escribir aquí... (Ej. Equipos de la materia, ideas, listas de pendientes)..." />
+                                    <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-0" style={{ backgroundImage: 'linear-gradient(var(--theme-main) 1px, transparent 1px)', backgroundSize: '100% 2rem', marginTop: '2rem' }} />
+                                 </div>
+                              </>
+                           );
+                        })() : (
+                           <div className="flex-1 flex flex-col items-center justify-center opacity-30">
+                              <Edit3 size={60} className="text-theme-main mb-4" />
+                              <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Selecciona o crea una nota</p>
+                           </div>
+                        )}
+                     </div>
+                  </div>
+               </div>
+            )}
 
             {viewMode === 'classes' && (
                <div className="flex-1 p-10 overflow-y-auto max-w-7xl mx-auto w-full custom-scrollbar">
@@ -704,6 +775,20 @@
                     <button onClick={() => setShowExpenseModal(true)} className="flex items-center gap-2 bg-theme-dark text-white px-5 py-3 rounded-full font-bold text-[10px] tracking-widest uppercase shadow-md hover:scale-105 transition-all"><Receipt size={14}/> Captura Gasto Rápido</button>
                   </div>
                 </header>
+
+                {/* V28: EVENTO ESTRELLA DEL CALENDARIO */}
+                {personalData.calendarEvents?.[selectedDate] && (
+                  <div className="mb-8 bg-gradient-to-r from-theme-main to-theme-sec p-1 rounded-[2rem] shadow-lg animate-in fade-in slide-in-from-top-4">
+                     <div className="bg-white/95 backdrop-blur-md p-6 rounded-[1.8rem] flex items-center gap-5">
+                        <div className="bg-purple-50 p-4 rounded-full text-theme-main shadow-sm"><Star size={24}/></div>
+                        <div>
+                           <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-theme-main mb-1">Evento Destacado del Día</p>
+                           <p className="text-xl font-serif font-semibold italic text-slate-800">{personalData.calendarEvents[selectedDate]}</p>
+                        </div>
+                     </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                   <div className="lg:col-span-2 space-y-6">
                     {groupsToday.map(g => {
@@ -964,32 +1049,6 @@
                     </section>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 mt-8">
-                    <section className="bg-theme-surface/50 p-10 rounded-[3.5rem] border border-theme-surface shadow-lg h-[400px] flex flex-col">
-                       <h3 className="text-[11px] font-bold uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2 italic"><ClipboardList size={14}/> Notas Personales</h3>
-                       <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
-                          {safeTasksList.map(t => (
-                             <div key={t.id} onClick={() => setPersonalData(p => ({...p, tasks: (p.tasks||[]).map(x => x.id === t.id ? {...x, done: !x.done} : x)}))} className={`flex items-center gap-3 p-3 bg-white rounded-[1.5rem] cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-theme-surface group ${t.priority === 'urgent' ? 'border-l-4 border-l-red-400' : t.priority === 'important' ? 'border-l-4 border-l-amber-400' : ''}`}>
-                                {t.done ? <CheckCircle2 size={18} className="text-theme-main" /> : <Circle size={18} className="text-slate-300 group-hover:text-theme-main" />}
-                                <span className={`text-[13px] italic flex-1 ${t.done ? 'line-through text-slate-400 opacity-50' : 'text-slate-700 font-semibold'}`}>{t.text}</span>
-                                {t.priority === 'urgent' && <Flame size={14} className="text-red-400" />}
-                                {t.priority === 'important' && <Star size={14} className="text-amber-400" />}
-                                <button onClick={(e) => { e.stopPropagation(); setPersonalData(p=>({...p, tasks: (p.tasks||[]).filter(x=>x.id !== t.id)})); }} className="opacity-0 group-hover:opacity-100 text-red-200 hover:text-red-400 ml-2"><Trash2 size={14}/></button>
-                             </div>
-                          ))}
-                          {safeTasksList.length === 0 && <p className="text-center text-xs text-slate-400 italic py-10">Agrega una nueva nota.</p>}
-                       </div>
-                       <div className="mt-4">
-                          <div className="flex gap-2 mb-2">
-                             <button onClick={()=>setTaskPriority('urgent')} className={`text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-full flex items-center gap-1 transition-colors ${taskPriority==='urgent'?'bg-red-100 text-red-600':'text-slate-400 hover:bg-white'}`}><Flame size={10}/> Urgente</button>
-                             <button onClick={()=>setTaskPriority('important')} className={`text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-full flex items-center gap-1 transition-colors ${taskPriority==='important'?'bg-amber-100 text-amber-600':'text-slate-400 hover:bg-white'}`}><Star size={10}/> Importante</button>
-                             <button onClick={()=>setTaskPriority('normal')} className={`text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-full flex items-center gap-1 transition-colors ${taskPriority==='normal'?'bg-slate-200 text-slate-600':'text-slate-400 hover:bg-white'}`}><Circle size={10}/> Normal</button>
-                          </div>
-                          <input type="text" value={newBujoNote} onChange={(e)=>setNewBujoNote(e.target.value)} placeholder="+ Nueva nota..." className="w-full p-4 bg-white rounded-[2rem] text-sm focus:outline-none italic transition-all shadow-sm border border-transparent focus:border-theme-main text-slate-600" onKeyDown={(e) => { if(e.key === 'Enter' && newBujoNote.trim()) { setPersonalData(p => ({...p, tasks: [...(p.tasks||[]), {id: Date.now(), text: newBujoNote.trim(), done: false, priority: taskPriority}]})); setNewBujoNote(''); } }} />
-                       </div>
-                    </section>
-                </div>
               </div>
             )}
 
@@ -1050,10 +1109,31 @@
 
             {viewMode === 'calendar' && (
               <div className="flex-1 p-12 overflow-y-auto max-w-7xl mx-auto w-full custom-scrollbar">
-                <header className="mb-10 flex justify-between items-end border-b border-theme-surface pb-8">
+                <header className="mb-6 flex justify-between items-end border-b border-theme-surface pb-6">
                   <div><p className="text-[12px] font-bold text-theme-accent uppercase tracking-[0.4em] mb-2 italic">Visión General</p><h2 className="text-6xl font-serif font-bold text-theme-dark italic tracking-tighter">Mi Mes</h2></div>
-                  <div className="flex items-center gap-6 bg-white p-3 px-6 rounded-full border border-theme-surface shadow-md"><button onClick={() => setCurrentCalMonth(new Date(currentCalMonth.getFullYear(), currentCalMonth.getMonth() - 1, 1))} className="p-2 text-slate-300 hover:text-theme-main"><ArrowLeft size={24} /></button><span className="text-lg font-bold text-theme-dark uppercase tracking-widest min-w-[150px] text-center">{currentCalMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</span><button onClick={() => setCurrentCalMonth(new Date(currentCalMonth.getFullYear(), currentCalMonth.getMonth() + 1, 1))} className="p-2 text-slate-300 hover:text-theme-main"><ArrowRight size={24} /></button></div>
+                  
+                  {/* V28: PESTAÑAS DE MESES (CALENDARIO) */}
+                  <div className="flex flex-col items-end gap-4">
+                     <div className="flex items-center gap-4 bg-white p-2 px-5 rounded-full border border-theme-surface shadow-sm">
+                        <button onClick={() => setCurrentCalMonth(new Date(currentCalMonth.getFullYear() - 1, currentCalMonth.getMonth(), 1))} className="text-slate-300 hover:text-theme-main"><ArrowLeft size={16} /></button>
+                        <span className="text-sm font-bold text-theme-dark uppercase tracking-widest text-center w-16">{currentCalMonth.getFullYear()}</span>
+                        <button onClick={() => setCurrentCalMonth(new Date(currentCalMonth.getFullYear() + 1, currentCalMonth.getMonth(), 1))} className="text-slate-300 hover:text-theme-main"><ArrowRight size={16} /></button>
+                     </div>
+                  </div>
                 </header>
+
+                <div className="flex gap-2 overflow-x-auto pb-4 mb-2 custom-scrollbar px-2">
+                   {['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'].map((m, i) => (
+                     <button
+                       key={m}
+                       onClick={() => setCurrentCalMonth(new Date(currentCalMonth.getFullYear(), i, 1))}
+                       className={`px-8 py-3 rounded-[2rem] font-bold text-[10px] uppercase tracking-[0.2em] transition-all whitespace-nowrap shadow-sm border ${currentCalMonth.getMonth() === i ? 'bg-theme-main text-white border-transparent scale-105' : 'bg-white text-slate-400 border-slate-100 hover:border-theme-surface hover:bg-slate-50'}`}
+                     >
+                       {m}
+                     </button>
+                   ))}
+                </div>
+
                 <div className="bg-white p-8 rounded-[4rem] border border-theme-surface shadow-xl"><div className="grid grid-cols-7 gap-4 mb-4">{['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d=>(<div key={d} className="text-center text-[10px] font-bold uppercase tracking-widest text-theme-main opacity-70 p-2">{d}</div>))}<div className="grid grid-cols-7 gap-4 contents">
                   {(() => { const year = currentCalMonth.getFullYear(); const month = currentCalMonth.getMonth(); const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate(); const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; const cells = []; for(let i=0; i<adjustedFirstDay; i++) cells.push(<div key={`empty-${i}`} className="p-2 opacity-0"></div>); for(let day=1; day<=daysInMonth; day++) { const dateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const eventText = (personalData.calendarEvents||{})[dateStr]; const isToday = dateStr === selectedDate; cells.push(<div key={day} onClick={() => setShowEventModal({show:true, date:dateStr, text: eventText || ''})} className={`min-h-[100px] p-3 border rounded-3xl transition-all cursor-pointer hover:shadow-md flex flex-col ${isToday ? 'bg-theme-surface border-theme-main' : 'bg-white border-theme-surface'}`}><span className={`text-sm font-bold ${isToday ? 'text-theme-main' : 'text-slate-400'}`}>{day}</span>{eventText && <div className="mt-2 text-[10px] bg-theme-surface text-theme-dark p-2 rounded-xl leading-tight italic overflow-hidden line-clamp-3">{eventText}</div>}</div>); } return cells; })()}
                 </div></div></div>
@@ -1372,7 +1452,27 @@
           )}
 
           {scheduleModal.show && (<div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6"><div className="bg-white w-full max-w-sm p-8 rounded-[3rem] shadow-2xl"><h3 className="text-2xl font-serif font-bold text-theme-dark italic mb-6 text-center">Programar para...</h3><input type="date" value={scheduleModal.date} onChange={e=>setScheduleModal({...scheduleModal, date: e.target.value})} className="w-full p-5 bg-slate-50 rounded-2xl border-none mb-6 text-center font-bold text-theme-main"/><div className="flex gap-4"><button onClick={()=>setScheduleModal({show:false})} className="flex-1 p-4 rounded-xl font-bold text-[10px] text-slate-400 uppercase tracking-widest">Cancelar</button><button onClick={()=>{addSession(scheduleModal.itemType, scheduleModal.itemId, scheduleModal.date); setScheduleModal({show:false})}} className="flex-1 p-4 rounded-xl font-bold text-[10px] bg-theme-main text-white uppercase tracking-widest">Aceptar</button></div></div></div>)}
-          {showEventModal.show && (<div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6"><div className="bg-white w-full max-w-sm p-8 rounded-[3rem] shadow-2xl"><h3 className="text-2xl font-serif font-bold text-theme-dark italic mb-2">Añadir Evento</h3><p className="text-xs text-slate-400 mb-6 uppercase tracking-widest">{showEventModal.date}</p><textarea className="w-full h-32 p-4 bg-slate-50 rounded-2xl focus:outline-none text-sm italic shadow-inner resize-none text-slate-700" placeholder="Ej. Examen Parcial..." value={showEventModal.text} onChange={(e) => setShowEventModal({...showEventModal, text: e.target.value})}></textarea><div className="flex gap-4 mt-6"><button onClick={() => setShowEventModal({show:false, date:null, text:''})} className="flex-1 p-4 rounded-xl font-bold text-[10px] text-slate-400 uppercase tracking-widest">Cancelar</button><button onClick={saveCalendarEvent} className="flex-1 p-4 rounded-xl font-bold text-[10px] bg-theme-main text-white uppercase tracking-widest shadow-lg">Guardar</button></div></div></div>)}
+          
+          {/* V28: EVENT MODAL (CONECTADO CON VISTA DIARIA) */}
+          {showEventModal.show && (
+            <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6">
+              <div className="bg-white w-full max-w-sm p-8 rounded-[3rem] shadow-2xl">
+                <h3 className="text-2xl font-serif font-bold text-theme-dark italic mb-2">Evento / Recordatorio</h3>
+                <p className="text-xs text-slate-400 mb-6 uppercase tracking-widest">{showEventModal.date}</p>
+                <textarea className="w-full h-32 p-4 bg-slate-50 rounded-2xl focus:outline-none text-sm italic shadow-inner resize-none text-slate-700 mb-4" placeholder="Ej. Examen Parcial, Junta..." value={showEventModal.text} onChange={(e) => setShowEventModal({...showEventModal, text: e.target.value})}></textarea>
+                
+                <div className="flex flex-col gap-3">
+                   <div className="flex gap-3">
+                      <button onClick={() => setShowEventModal({show:false, date:null, text:''})} className="flex-1 p-4 rounded-xl font-bold text-[10px] text-slate-400 uppercase tracking-widest bg-slate-50 hover:bg-slate-100 transition-colors">Cerrar</button>
+                      <button onClick={saveCalendarEvent} className="flex-1 p-4 rounded-xl font-bold text-[10px] bg-theme-main text-white uppercase tracking-widest shadow-lg hover:scale-105 transition-transform">Guardar</button>
+                   </div>
+                   <button onClick={() => { setSelectedDate(showEventModal.date); setViewMode('daily'); setShowEventModal({show:false, date:null, text:''}); }} className="w-full p-4 rounded-xl font-bold text-[10px] text-theme-main bg-theme-surface uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-purple-100 transition-colors">
+                      <ArrowUpRight size={14}/> Ir a este Día
+                   </button>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* RESET FINANCE MODAL */}
           {showResetFinanceModal && (
